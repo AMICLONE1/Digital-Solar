@@ -56,23 +56,29 @@ export default function TestimonialsSection() {
 
   useGSAP(
     () => {
-      if (!sectionRef.current) return;
+      if (!sectionRef.current) {
+        return;
+      }
 
-      gsap.fromTo(
-        sectionRef.current.querySelector(".testimonials-header"),
-        { opacity: 0, y: -30 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 1,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top 70%",
-            toggleActions: "play none none reverse",
-          },
-        }
-      );
+      const header = sectionRef.current.querySelector(".testimonials-header");
+      
+      if (header) {
+        gsap.fromTo(
+          header,
+          { opacity: 0, y: -30 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 1,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: "top 70%",
+              toggleActions: "play none none reverse",
+            },
+          }
+        );
+      }
     },
     { scope: sectionRef }
   );

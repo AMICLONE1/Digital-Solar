@@ -55,7 +55,9 @@ export default function FinalCTASection() {
       {/* Animated background */}
       <div className="absolute inset-0 bg-gradient-to-br from-forest via-forest-light to-charcoal">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_70%)]" />
-        <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%23ffffff" fill-opacity="0.03"%3E%3Ccircle cx="50" cy="50" r="2"/%3E%3C/g%3E%3C/svg%3E')]" />
+        <div
+            className={`absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%23ffffff" fill-opacity="0.03"%3E%3Ccircle cx="50" cy="50" r="2"/%3E%3C/g%3E%3C/svg%3E')]`}
+        />
       </div>
 
       <div className="max-w-5xl mx-auto relative z-10 text-center space-y-12">
@@ -186,4 +188,3 @@ export default function FinalCTASection() {
     </section>
   );
 }
-
