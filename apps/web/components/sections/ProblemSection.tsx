@@ -21,7 +21,9 @@ export default function ProblemSection() {
 
   useGSAP(
     () => {
-      if (!sectionRef.current || !textRef.current || !animationRef.current) return;
+      if (!sectionRef.current || !textRef.current || !animationRef.current) {
+        return;
+      }
 
       gsap.fromTo(
         textRef.current,
