@@ -123,7 +123,9 @@ export default function ThreeScene() {
         preserveDrawingBuffer: false,
       }}
       onCreated={({ gl }) => {
-        gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        if (typeof window !== "undefined") {
+          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        }
       }}
     >
       <PerspectiveCamera makeDefault position={[0, 5, 15]} fov={50} />

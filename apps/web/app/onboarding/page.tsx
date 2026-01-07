@@ -5,16 +5,20 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronRight, Sparkles } from "lucide-react";
+import { FormField } from "@/components/ui/FormField";
+import { useToast, ToastContainer } from "@/components/ui/Toast";
 
 type Step = "kyc" | "utility" | "complete";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const supabase = createClient();
+  const toast = useToast();
   const [currentStep, setCurrentStep] = useState<Step>("kyc");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [user, setUser] = useState<any>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const getUser = async () => {
@@ -48,8 +52,43 @@ export default function OnboardingPage() {
     );
   }
 
+  const validateKYC = () => {
+    const errors: Record<string, string> = {};
+    
+    if (!name.trim()) {
+      errors.name = "Full name is required";
+    } else if (name.trim().length < 2) {
+      errors.name = "Name must be at least 2 characters";
+    }
+
+    if (!aadhaarNumber) {
+      errors.aadhaarNumber = "Aadhaar number is required";
+    } else if (aadhaarNumber.length !== 12) {
+      errors.aadhaarNumber = "Aadhaar number must be 12 digits";
+    } else if (!/^\d{12}$/.test(aadhaarNumber)) {
+      errors.aadhaarNumber = "Aadhaar number must contain only digits";
+    }
+
+    if (!panNumber) {
+      errors.panNumber = "PAN number is required";
+    } else if (panNumber.length !== 10) {
+      errors.panNumber = "PAN number must be 10 characters";
+    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNumber)) {
+      errors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleKYCSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateKYC()) {
+      setError("Please fix the errors below");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -57,25 +96,56 @@ export default function OnboardingPage() {
       const { error: updateError } = await supabase
         .from("users")
         .update({
-          name,
+          name: name.trim(),
           aadhaar_number: aadhaarNumber,
-          pan_number: panNumber,
+          pan_number: panNumber.toUpperCase(),
           kyc_status: "VERIFIED", // In production, verify via API
         })
         .eq("id", user.id);
 
       if (updateError) throw updateError;
 
+      toast.success("KYC information saved successfully!");
       setCurrentStep("utility");
+      setFieldErrors({});
     } catch (err: any) {
-      setError(err.message || "KYC verification failed");
+      const errorMessage = err.message || "KYC verification failed";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
+  const validateUtility = () => {
+    const errors: Record<string, string> = {};
+    
+    if (!utilityConsumerNumber.trim()) {
+      errors.utilityConsumerNumber = "Utility consumer number is required";
+    } else if (utilityConsumerNumber.trim().length < 5) {
+      errors.utilityConsumerNumber = "Consumer number must be at least 5 characters";
+    }
+
+    if (!state) {
+      errors.state = "Please select your state";
+    }
+
+    if (!discom) {
+      errors.discom = "Please select your DISCOM";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleUtilitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateUtility()) {
+      setError("Please fix the errors below");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -83,7 +153,7 @@ export default function OnboardingPage() {
       const { error: updateError } = await supabase
         .from("users")
         .update({
-          utility_consumer_number: utilityConsumerNumber,
+          utility_consumer_number: utilityConsumerNumber.trim(),
           state,
           discom,
         })
@@ -91,9 +161,13 @@ export default function OnboardingPage() {
 
       if (updateError) throw updateError;
 
+      toast.success("Utility information saved successfully!");
       setCurrentStep("complete");
+      setFieldErrors({});
     } catch (err: any) {
-      setError(err.message || "Failed to update utility information");
+      const errorMessage = err.message || "Failed to update utility information";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -106,6 +180,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-offwhite via-offwhite to-forest/5 py-12 px-4 sm:px-6 lg:px-8">
+      <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
@@ -186,54 +261,72 @@ export default function OnboardingPage() {
                   </p>
                 </div>
 
-                <div>
-                  <label htmlFor="name" className="block text-sm font-semibold text-charcoal mb-2">
-                    Full Name
-                  </label>
+                <FormField
+                  label="Full Name"
+                  error={fieldErrors.name}
+                  required
+                  hint="Enter your full legal name as per Aadhaar"
+                >
                   <input
                     id="name"
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: "" });
+                    }}
                     required
-                    className="w-full px-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all"
+                    className={`w-full px-4 py-3 bg-offwhite border ${
+                      fieldErrors.name ? "border-red-300" : "border-charcoal/10"
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
                   />
-                </div>
+                </FormField>
 
-                <div>
-                  <label
-                    htmlFor="aadhaar"
-                    className="block text-sm font-semibold text-charcoal mb-2"
-                  >
-                    Aadhaar Number
-                  </label>
+                <FormField
+                  label="Aadhaar Number"
+                  error={fieldErrors.aadhaarNumber}
+                  required
+                  hint="12-digit Aadhaar number (numbers only)"
+                >
                   <input
                     id="aadhaar"
                     type="text"
                     value={aadhaarNumber}
-                    onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                    onChange={(e) => {
+                      setAadhaarNumber(e.target.value.replace(/\D/g, "").slice(0, 12));
+                      if (fieldErrors.aadhaarNumber) setFieldErrors({ ...fieldErrors, aadhaarNumber: "" });
+                    }}
                     placeholder="12-digit Aadhaar"
                     required
                     maxLength={12}
-                    className="w-full px-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all"
+                    className={`w-full px-4 py-3 bg-offwhite border ${
+                      fieldErrors.aadhaarNumber ? "border-red-300" : "border-charcoal/10"
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
                   />
-                </div>
+                </FormField>
 
-                <div>
-                  <label htmlFor="pan" className="block text-sm font-semibold text-charcoal mb-2">
-                    PAN Number
-                  </label>
+                <FormField
+                  label="PAN Number"
+                  error={fieldErrors.panNumber}
+                  required
+                  hint="10-character PAN (e.g., ABCDE1234F)"
+                >
                   <input
                     id="pan"
                     type="text"
                     value={panNumber}
-                    onChange={(e) => setPanNumber(e.target.value.toUpperCase().slice(0, 10))}
+                    onChange={(e) => {
+                      setPanNumber(e.target.value.toUpperCase().slice(0, 10));
+                      if (fieldErrors.panNumber) setFieldErrors({ ...fieldErrors, panNumber: "" });
+                    }}
                     placeholder="ABCDE1234F"
                     required
                     maxLength={10}
-                    className="w-full px-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all uppercase"
+                    className={`w-full px-4 py-3 bg-offwhite border ${
+                      fieldErrors.panNumber ? "border-red-300" : "border-charcoal/10"
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all uppercase`}
                   />
-                </div>
+                </FormField>
 
                 {error && (
                   <motion.div
@@ -276,27 +369,32 @@ export default function OnboardingPage() {
                   </p>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="consumer-number"
-                    className="block text-sm font-semibold text-charcoal mb-2"
-                  >
-                    Utility Consumer Number
-                  </label>
+                <FormField
+                  label="Utility Consumer Number"
+                  error={fieldErrors.utilityConsumerNumber}
+                  required
+                  hint="Your electricity bill consumer number"
+                >
                   <input
                     id="consumer-number"
                     type="text"
                     value={utilityConsumerNumber}
-                    onChange={(e) => setUtilityConsumerNumber(e.target.value)}
+                    onChange={(e) => {
+                      setUtilityConsumerNumber(e.target.value);
+                      if (fieldErrors.utilityConsumerNumber) setFieldErrors({ ...fieldErrors, utilityConsumerNumber: "" });
+                    }}
                     required
-                    className="w-full px-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all"
+                    className={`w-full px-4 py-3 bg-offwhite border ${
+                      fieldErrors.utilityConsumerNumber ? "border-red-300" : "border-charcoal/10"
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
                   />
-                </div>
+                </FormField>
 
-                <div>
-                  <label htmlFor="state" className="block text-sm font-semibold text-charcoal mb-2">
-                    State
-                  </label>
+                <FormField
+                  label="State"
+                  error={fieldErrors.state}
+                  required
+                >
                   <select
                     id="state"
                     value={state}
@@ -305,9 +403,12 @@ export default function OnboardingPage() {
                       if (e.target.value === "Maharashtra") setDiscom("MSEDCL");
                       else if (e.target.value === "Delhi") setDiscom("BSES");
                       else setDiscom("");
+                      if (fieldErrors.state) setFieldErrors({ ...fieldErrors, state: "" });
                     }}
                     required
-                    className="w-full px-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all"
+                    className={`w-full px-4 py-3 bg-offwhite border ${
+                      fieldErrors.state ? "border-red-300" : "border-charcoal/10"
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
                   >
                     <option value="">Select State</option>
                     <option value="Maharashtra">Maharashtra</option>
@@ -316,18 +417,25 @@ export default function OnboardingPage() {
                     <option value="Tamil Nadu">Tamil Nadu</option>
                     <option value="Gujarat">Gujarat</option>
                   </select>
-                </div>
+                </FormField>
 
-                <div>
-                  <label htmlFor="discom" className="block text-sm font-semibold text-charcoal mb-2">
-                    DISCOM
-                  </label>
+                <FormField
+                  label="DISCOM"
+                  error={fieldErrors.discom}
+                  required
+                  hint="Your electricity distribution company"
+                >
                   <select
                     id="discom"
                     value={discom}
-                    onChange={(e) => setDiscom(e.target.value)}
+                    onChange={(e) => {
+                      setDiscom(e.target.value);
+                      if (fieldErrors.discom) setFieldErrors({ ...fieldErrors, discom: "" });
+                    }}
                     required
-                    className="w-full px-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all"
+                    className={`w-full px-4 py-3 bg-offwhite border ${
+                      fieldErrors.discom ? "border-red-300" : "border-charcoal/10"
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
                   >
                     <option value="">Select DISCOM</option>
                     <option value="MSEDCL">MSEDCL</option>
@@ -336,7 +444,7 @@ export default function OnboardingPage() {
                     <option value="TANGEDCO">TANGEDCO</option>
                     <option value="DGVCL">DGVCL</option>
                   </select>
-                </div>
+                </FormField>
 
                 {error && (
                   <motion.div
@@ -385,12 +493,12 @@ export default function OnboardingPage() {
                   </p>
                 </div>
                 <motion.button
-                  onClick={() => router.push("/dashboard")}
+                  onClick={() => router.push("/reserve")}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="px-8 py-4 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-semibold"
                 >
-                  Go to Dashboard
+                  Reserve Solar Capacity
                 </motion.button>
               </motion.div>
             )}

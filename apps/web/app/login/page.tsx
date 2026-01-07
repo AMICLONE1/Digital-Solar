@@ -43,14 +43,14 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // Check if Supabase is configured
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        setError("Authentication service is not configured. Please contact support.");
+      console.log("Attempting login for:", email.trim().toLowerCase());
+      
+      // Check if Supabase client is properly configured
+      if (!supabase || typeof supabase.auth?.signInWithPassword !== "function") {
+        setError("Authentication service is not properly configured. Please check your environment variables.");
         setLoading(false);
         return;
       }
-
-      console.log("Attempting login for:", email.trim().toLowerCase());
       
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
@@ -115,37 +115,95 @@ export default function LoginPage() {
         console.log("Session verified, redirecting...");
 
         // Successfully logged in
-        // Check if user needs onboarding
+        // Check if user needs onboarding or has reservations
         try {
-          const { data: profile } = await supabase
+          // First, ensure user profile exists in users table
+          const { data: existingProfile } = await supabase
+            .from("users")
+            .select("id, kyc_status, utility_consumer_number")
+            .eq("id", data.user.id)
+            .single();
+
+          // If profile doesn't exist, create a basic one
+          if (!existingProfile) {
+            console.log("User profile not found, creating basic profile...");
+            const { error: createError } = await supabase
+              .from("users")
+              .insert({
+                id: data.user.id,
+                email: data.user.email,
+                kyc_status: "PENDING",
+              });
+
+            if (createError) {
+              console.error("Error creating user profile:", createError);
+              // Continue anyway - redirect to onboarding
+            }
+          }
+
+          // Get profile (either existing or newly created)
+          const { data: profile, error: profileError } = await supabase
             .from("users")
             .select("kyc_status, utility_consumer_number")
             .eq("id", data.user.id)
             .single();
 
-          // Redirect based on profile completion
-          const redirectPath = profile && profile.kyc_status === "VERIFIED" && profile.utility_consumer_number
-            ? "/dashboard"
-            : "/onboarding";
+          // If profile is incomplete or doesn't exist, redirect to onboarding
+          if (profileError || !profile || profile.kyc_status !== "VERIFIED" || !profile.utility_consumer_number) {
+            console.log("Profile incomplete or missing, redirecting to onboarding");
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            window.location.href = "/onboarding";
+            return;
+          }
 
-          console.log("Redirecting to:", redirectPath);
+          // Profile is complete - check if user has reserved capacity
+          const { data: allocations, error: allocError } = await supabase
+            .from("allocations")
+            .select("id")
+            .eq("user_id", data.user.id)
+            .limit(1);
+
+          if (allocError) {
+            console.error("Error checking allocations:", allocError);
+            // If we can't check, redirect to reserve page to let them start
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            window.location.href = "/reserve";
+            return;
+          }
+
+          // If user has allocations, go to dashboard; otherwise, go to reserve page
+          const redirectPath = allocations && allocations.length > 0
+            ? "/dashboard"
+            : "/reserve";
+
+          console.log("Redirecting to:", redirectPath, allocations?.length ? "(has reservations)" : "(no reservations)");
+          
+          // Small delay to ensure session is fully persisted
+          await new Promise((resolve) => setTimeout(resolve, 300));
           
           // Use window.location for reliable redirect
           window.location.href = redirectPath;
-        } catch (profileError) {
+        } catch (profileError: any) {
           console.error("Profile check error:", profileError);
-          // Still redirect even if profile check fails
+          // Still redirect even if profile check fails - send to onboarding
+          await new Promise((resolve) => setTimeout(resolve, 300));
           window.location.href = "/onboarding";
         }
       } else {
         console.error("Login failed: No user returned");
-        setError("Login failed. Please try again.");
+        setError("Login failed. Please check your credentials and try again.");
         setLoading(false);
       }
     } catch (err: any) {
       console.error("Login exception:", err);
-      setError(err.message || "An unexpected error occurred. Please try again.");
-    } finally {
+      const errorMessage = err.message || "An unexpected error occurred. Please try again.";
+      
+      // Check if it's a Supabase configuration error
+      if (errorMessage.includes("Supabase not configured") || errorMessage.includes("URL and Key are required")) {
+        setError("Authentication service is not configured. Please contact support or check your environment variables.");
+      } else {
+        setError(errorMessage);
+      }
       setLoading(false);
     }
   };

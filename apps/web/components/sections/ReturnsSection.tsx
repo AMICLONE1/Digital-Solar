@@ -20,9 +20,10 @@ export default function ReturnsSection() {
   const avgGenerationPerKw = 120; // kWh per kW per month (example)
   const monthlySavings = capacity * avgGenerationPerKw * ratePerKwh;
 
-  // Generate chart data
+  // Generate chart data - use static month names to avoid hydration issues
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const chartData = Array.from({ length: 12 }, (_, i) => ({
-    month: new Date(2024, i).toLocaleDateString("en-US", { month: "short" }),
+    month: monthNames[i],
     savings: monthlySavings * (i + 1),
   }));
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
+import { MonitoringProvider } from "@/components/providers/MonitoringProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,6 +27,18 @@ export const metadata: Metadata = {
   description:
     "Reserve clean energy from large solar plants and reduce your electricity bill every month. No installation required.",
   keywords: ["solar energy", "renewable energy", "electricity savings", "digital solar"],
+  manifest: "/manifest.json",
+  themeColor: "#1B5E20",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PowerNetPro",
+  },
 };
 
 export default function RootLayout({
@@ -39,7 +52,26 @@ export default function RootLayout({
       className={`${inter.variable} ${playfair.variable} ${dmSerif.variable}`}
       suppressHydrationWarning
     >
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <MonitoringProvider>{children}</MonitoringProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                      console.log('SW registered:', registration);
+                    })
+                    .catch((error) => {
+                      console.log('SW registration failed:', error);
+                    });
+                });
+              }
+            `,
+          }}
+        />
+      </body>
     </html>
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Mail, Lock, User, ArrowRight, Sparkles, CheckCircle } from "lucide-react";
+import PasswordStrength from "@/components/ui/PasswordStrength";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -16,8 +17,18 @@ export default function SignupPage() {
   const [loadingMessage, setLoadingMessage] = useState("Creating Account...");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  useEffect(() => {
+    // Get referral code from URL
+    const ref = searchParams.get("ref");
+    if (ref) {
+      setReferralCode(ref);
+    }
+  }, [searchParams]);
 
   const handleSuccessfulLogin = async (userId: string) => {
     try {
@@ -28,12 +39,33 @@ export default function SignupPage() {
         .eq("id", userId)
         .single();
 
-      // Redirect based on profile completion
-      const redirectPath = profile && profile.kyc_status === "VERIFIED" && profile.utility_consumer_number 
-        ? "/dashboard" 
-        : "/onboarding";
-      
-      console.log("Redirecting to:", redirectPath);
+      // If profile is incomplete, redirect to onboarding
+      if (!profile || profile.kyc_status !== "VERIFIED" || !profile.utility_consumer_number) {
+        console.log("Profile incomplete, redirecting to onboarding");
+        window.location.href = "/onboarding";
+        return;
+      }
+
+      // Profile is complete - check if user has reserved capacity
+      const { data: allocations, error: allocError } = await supabase
+        .from("allocations")
+        .select("id")
+        .eq("user_id", userId)
+        .limit(1);
+
+      if (allocError) {
+        console.error("Error checking allocations:", allocError);
+        // If we can't check, redirect to reserve page to let them start
+        window.location.href = "/reserve";
+        return;
+      }
+
+      // If user has allocations, go to dashboard; otherwise, go to reserve page
+      const redirectPath = allocations && allocations.length > 0
+        ? "/dashboard"
+        : "/reserve";
+
+      console.log("Redirecting to:", redirectPath, allocations?.length ? "(has reservations)" : "(no reservations)");
       
       // Force navigation with full page reload to ensure session is set
       window.location.href = redirectPath;
@@ -130,7 +162,27 @@ export default function SignupPage() {
         console.log(`Waiting for profile creation... (${retries}/${maxRetries})`);
       }
 
-      // Step 3: Check if email confirmation is required
+      // Step 3: Apply referral code if provided
+      if (referralCode && signUpData.user) {
+        try {
+          console.log("Applying referral code:", referralCode);
+          const response = await fetch("/api/referrals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ referralCode }),
+          });
+          
+          if (response.ok) {
+            console.log("Referral code applied successfully");
+          } else {
+            console.warn("Failed to apply referral code (non-critical)");
+          }
+        } catch (refError) {
+          console.warn("Referral code application failed (non-critical):", refError);
+        }
+      }
+
+      // Step 4: Check if email confirmation is required
       if (signUpData.user.email_confirmed_at === null) {
         console.log("Email not confirmed, attempting auto-login anyway...");
         setLoadingMessage("Signing you in...");
@@ -308,6 +360,7 @@ export default function SignupPage() {
                   className="w-full pl-12 pr-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all"
                 />
               </div>
+              {password && <PasswordStrength password={password} />}
             </div>
 
             {/* Confirm Password Input */}

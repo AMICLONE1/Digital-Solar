@@ -84,12 +84,20 @@ export default function Navigation() {
               </motion.div>
             ))}
             {user ? (
-              <Link
-                href="/dashboard"
-                className="px-6 py-2.5 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium"
-              >
-                Dashboard
-              </Link>
+              <>
+                <Link
+                  href="/dashboard"
+                  className="px-6 py-2.5 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium"
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/settings"
+                  className="text-charcoal/70 hover:text-forest calm-transition font-medium"
+                >
+                  Settings
+                </Link>
+              </>
             ) : (
               <>
                 <Link
@@ -141,13 +149,22 @@ export default function Navigation() {
               ))}
               <div className="pt-4 border-t border-charcoal/10 space-y-3">
                 {user ? (
-                  <Link
-                    href="/dashboard"
-                    className="block px-6 py-3 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium text-center"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
+                  <>
+                    <Link
+                      href="/dashboard"
+                      className="block px-6 py-3 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium text-center"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/settings"
+                      className="block px-6 py-3 border-2 border-forest text-forest rounded-xl hover:bg-forest/5 calm-transition font-medium text-center"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Settings
+                    </Link>
+                  </>
                 ) : (
                   <>
                     <Link

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { designSystem } from "./lib/design-system";
 
 const config: Config = {
   content: [
@@ -10,36 +11,37 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Core palette from TRD
-        forest: {
-          DEFAULT: "#1B5E20", // Deep Forest Green
-          light: "#2E7D32",
-          dark: "#0D3E11",
-        },
-        offwhite: {
-          DEFAULT: "#FAF9F6", // Warm Off-White
-          light: "#FFFFFF",
-          dark: "#F5F3F0",
-        },
-        gold: {
-          DEFAULT: "#D4AF37", // Muted Gold Accent
-          light: "#E8D5A3",
-          dark: "#B8941F",
-        },
-        charcoal: {
-          DEFAULT: "#2C2C2C", // Soft Charcoal
-          light: "#4A4A4A",
-          dark: "#1A1A1A",
-        },
+        // Core palette from design system
+        forest: designSystem.colors.forest,
+        gold: designSystem.colors.gold,
+        charcoal: designSystem.colors.charcoal,
+        offwhite: designSystem.colors.offwhite,
+        // Semantic colors
+        success: designSystem.colors.success,
+        error: designSystem.colors.error,
+        warning: designSystem.colors.warning,
+        info: designSystem.colors.info,
       },
       fontFamily: {
-        heading: ["Playfair Display", "serif"],
-        body: ["Inter", "sans-serif"],
+        heading: designSystem.typography.fonts.heading,
+        body: designSystem.typography.fonts.body,
+        mono: designSystem.typography.fonts.mono,
         display: ["DM Serif Display", "serif"],
       },
+      fontSize: designSystem.typography.sizes,
+      fontWeight: designSystem.typography.weights,
+      lineHeight: designSystem.typography.lineHeights,
+      spacing: designSystem.spacing,
+      borderRadius: designSystem.borderRadius,
+      boxShadow: designSystem.shadows,
+      screens: designSystem.breakpoints,
+      zIndex: designSystem.zIndex,
+      transitionDuration: designSystem.animations.durations,
+      transitionTimingFunction: designSystem.animations.easings,
       animation: {
         "fade-in": "fadeIn 0.5s ease-in-out",
         "slide-up": "slideUp 0.5s ease-out",
+        "shimmer": "shimmer 3s infinite",
       },
       keyframes: {
         fadeIn: {
@@ -49,6 +51,10 @@ const config: Config = {
         slideUp: {
           "0%": { transform: "translateY(20px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-1000px 0" },
+          "100%": { backgroundPosition: "1000px 0" },
         },
       },
     },
