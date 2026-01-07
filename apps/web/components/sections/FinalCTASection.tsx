@@ -17,26 +17,31 @@ export default function FinalCTASection() {
 
   useGSAP(
     () => {
-      if (!sectionRef.current) return;
+      if (!sectionRef.current) {
+        return;
+      }
 
-      // Animate CTA elements
-      gsap.fromTo(
-        sectionRef.current.querySelectorAll(".cta-element"),
-        { opacity: 0, y: 30, scale: 0.9 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 1,
-          stagger: 0.15,
-          ease: "back.out(1.7)",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top 70%",
-            toggleActions: "play none none reverse",
-          },
-        }
-      );
+      const elements = sectionRef.current.querySelectorAll(".cta-element");
+      
+      if (elements.length > 0) {
+        gsap.fromTo(
+          elements,
+          { opacity: 0, y: 30, scale: 0.9 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 1,
+            stagger: 0.15,
+            ease: "back.out(1.7)",
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: "top 70%",
+              toggleActions: "play none none reverse",
+            },
+          }
+        );
+      }
     },
     { scope: sectionRef }
   );
