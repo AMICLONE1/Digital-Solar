@@ -17,7 +17,9 @@ export default function SolutionSection() {
 
   useGSAP(
     () => {
-      if (!sectionRef.current || !blocksRef.current) return;
+      if (!sectionRef.current || !blocksRef.current) {
+        return;
+      }
 
       const blocks = blocksRef.current.children;
       gsap.fromTo(

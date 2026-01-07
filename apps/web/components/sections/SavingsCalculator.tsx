@@ -40,10 +40,11 @@ function AnimatedNumber({
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Run animation when value changes
     if (prevValueRef.current === value) {
       return;
     }
-    
+
     if (animationRef.current !== null) {
       cancelAnimationFrame(animationRef.current);
     }
@@ -51,7 +52,7 @@ function AnimatedNumber({
     const startValue = displayValue;
     const endValue = value;
     prevValueRef.current = value;
-    const startTime = Date.now();
+    const startTime = performance.now();
 
     const animate = (timestamp: number) => {
       const elapsed = (timestamp - startTime) / 1000;
