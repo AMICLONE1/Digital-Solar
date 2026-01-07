@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@repo/database";
+import { requireAuth, errorResponse, successResponse } from "@/lib/api/middleware";
 import { z } from "zod";
 
 const kycSchema = z.object({
@@ -12,11 +10,12 @@ const kycSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
+    const { user, supabase } = auth;
     const body = await req.json();
     const { name, aadhaarNumber, panNumber } = kycSchema.parse(body);
 
@@ -27,41 +26,40 @@ export async function POST(req: NextRequest) {
     // 2. Verify Aadhaar/PAN
     // 3. Update user status based on response
 
-    const userId = (session.user as any).id;
-
-    // Check if Aadhaar or PAN already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ aadhaarNumber }, { panNumber }],
-        NOT: { id: userId },
-      },
-    });
+    // Check if Aadhaar or PAN already exists for another user
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .or(`aadhaar_number.eq.${aadhaarNumber},pan_number.eq.${panNumber}`)
+      .neq("id", user.id)
+      .limit(1)
+      .single();
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "Aadhaar or PAN already registered" },
-        { status: 400 }
-      );
+      return errorResponse("Aadhaar or PAN already registered", "DUPLICATE_KYC", 400);
     }
 
     // Update user with KYC information
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        name,
-        aadhaarNumber,
-        panNumber,
-        kycStatus: "VERIFIED", // In production, set based on API response
-      },
-    });
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        name: name.trim(),
+        aadhaar_number: aadhaarNumber,
+        pan_number: panNumber,
+        kyc_status: "VERIFIED", // In production, set based on API response
+      })
+      .eq("id", user.id);
 
-    return NextResponse.json({ success: true, message: "KYC verified" });
-  } catch (error) {
+    if (updateError) {
+      return errorResponse("Failed to update KYC", "KYC_UPDATE_ERROR", 500);
+    }
+
+    return successResponse({ success: true, message: "KYC verified" });
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return errorResponse("Validation error", "VALIDATION_ERROR", 400, error.errors);
     }
     console.error("KYC verification error:", error);
-    return NextResponse.json({ error: "KYC verification failed" }, { status: 500 });
+    return errorResponse("KYC verification failed", "KYC_VERIFY_ERROR", 500);
   }
 }
-

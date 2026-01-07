@@ -32,47 +32,19 @@ export default function SignupPage() {
 
   const handleSuccessfulLogin = async (userId: string) => {
     try {
-      // Check if user needs onboarding
-      const { data: profile } = await supabase
-        .from("users")
-        .select("kyc_status, utility_consumer_number")
-        .eq("id", userId)
-        .single();
-
-      // If profile is incomplete, redirect to onboarding
-      if (!profile || profile.kyc_status !== "VERIFIED" || !profile.utility_consumer_number) {
-        console.log("Profile incomplete, redirecting to onboarding");
-        window.location.href = "/onboarding";
-        return;
-      }
-
-      // Profile is complete - check if user has reserved capacity
-      const { data: allocations, error: allocError } = await supabase
-        .from("allocations")
-        .select("id")
-        .eq("user_id", userId)
-        .limit(1);
-
-      if (allocError) {
-        console.error("Error checking allocations:", allocError);
-        // If we can't check, redirect to reserve page to let them start
-        window.location.href = "/reserve";
-        return;
-      }
-
-      // If user has allocations, go to dashboard; otherwise, go to reserve page
-      const redirectPath = allocations && allocations.length > 0
-        ? "/dashboard"
-        : "/reserve";
-
-      console.log("Redirecting to:", redirectPath, allocations?.length ? "(has reservations)" : "(no reservations)");
+      // SundayGrids style: After signup, go directly to reserve page
+      // User can reserve solar first, then link utility later
+      console.log("Signup successful, redirecting to reserve page...");
       
-      // Force navigation with full page reload to ensure session is set
-      window.location.href = redirectPath;
+      // Small delay to ensure session is persisted
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      
+      // Redirect to reserve page (like SundayGrids' "Join Projects")
+      window.location.href = "/reserve";
     } catch (err) {
-      console.error("Profile check error:", err);
-      // Still redirect to onboarding even if profile check fails
-      window.location.href = "/onboarding";
+      console.error("Redirect error:", err);
+      // Fallback: still redirect to reserve
+      window.location.href = "/reserve";
     }
   };
 

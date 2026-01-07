@@ -11,6 +11,7 @@ export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
   const router = useRouter();
 
@@ -20,12 +21,45 @@ export default function Navigation() {
     };
     window.addEventListener("scroll", handleScroll);
 
-    // Check if user is logged in
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
+    // Check if user is logged in by checking session
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          setUser(null);
+        } else {
+          // Verify the session is still valid by checking user
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (userError || !user) {
+            setUser(null);
+            // Clear invalid session
+            await supabase.auth.signOut();
+          } else {
+            setUser(user);
+          }
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAuth();
+
+    // Listen to auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
     });
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
   const navLinks = [
@@ -83,35 +117,39 @@ export default function Navigation() {
                 </Link>
               </motion.div>
             ))}
-            {user ? (
+            {!isLoading && (
               <>
-                <Link
-                  href="/dashboard"
-                  className="px-6 py-2.5 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/settings"
-                  className="text-charcoal/70 hover:text-forest calm-transition font-medium"
-                >
-                  Settings
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-charcoal/70 hover:text-forest calm-transition font-medium"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/signup"
-                  className="px-6 py-2.5 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium"
-                >
-                  Get Started
-                </Link>
+                {user ? (
+                  <>
+                    <Link
+                      href="/connect"
+                      className="text-charcoal/70 hover:text-forest calm-transition font-medium"
+                    >
+                      Connect
+                    </Link>
+                    <Link
+                      href="/dashboard"
+                      className="px-6 py-2.5 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium"
+                    >
+                      Dashboard
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      className="text-charcoal/70 hover:text-forest calm-transition font-medium"
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/reserve"
+                      className="px-6 py-2.5 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium"
+                    >
+                      Join Projects
+                    </Link>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -148,39 +186,43 @@ export default function Navigation() {
                 </Link>
               ))}
               <div className="pt-4 border-t border-charcoal/10 space-y-3">
-                {user ? (
+                {!isLoading && (
                   <>
-                    <Link
-                      href="/dashboard"
-                      className="block px-6 py-3 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium text-center"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/settings"
-                      className="block px-6 py-3 border-2 border-forest text-forest rounded-xl hover:bg-forest/5 calm-transition font-medium text-center"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Settings
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      className="block px-6 py-3 border-2 border-forest text-forest rounded-xl hover:bg-forest/5 calm-transition font-medium text-center"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Sign In
-                    </Link>
-                    <Link
-                      href="/signup"
-                      className="block px-6 py-3 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium text-center"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Get Started
-                    </Link>
+                    {user ? (
+                      <>
+                        <Link
+                          href="/connect"
+                          className="block px-6 py-3 border-2 border-forest text-forest rounded-xl hover:bg-forest/5 calm-transition font-medium text-center"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          Connect
+                        </Link>
+                        <Link
+                          href="/dashboard"
+                          className="block px-6 py-3 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium text-center"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          Dashboard
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          href="/login"
+                          className="block px-6 py-3 border-2 border-forest text-forest rounded-xl hover:bg-forest/5 calm-transition font-medium text-center"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          Login
+                        </Link>
+                        <Link
+                          href="/reserve"
+                          className="block px-6 py-3 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-medium text-center"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          Join Projects
+                        </Link>
+                      </>
+                    )}
                   </>
                 )}
               </div>

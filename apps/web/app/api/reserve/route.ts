@@ -150,15 +150,17 @@ export async function POST(req: NextRequest) {
     }
 
     // TODO: Integrate with payment gateway (Razorpay/Stripe)
-    // For now, return payment URL placeholder
-    const paymentUrl = `/payment?paymentId=${payment.id}`;
+    // For now, return success with redirect to success page
+    const allocationId = allocations[0]?.id || payment.id;
 
     return NextResponse.json({
       success: true,
-      allocationId: allocations[0]?.id || payment.id,
+      allocationId,
       paymentId: payment.id,
-      paymentUrl,
       amount: totalAmount,
+      redirectUrl: `/reserve/success?allocationId=${allocationId}`,
+      // Payment URL for future integration
+      paymentUrl: `/payment?paymentId=${payment.id}`,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

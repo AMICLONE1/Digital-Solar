@@ -1,27 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@repo/database";
+import { requireAuth, errorResponse, successResponse } from "@/lib/api/middleware";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
-    const userId = (session.user as any).id;
+    const { user, supabase } = auth;
 
-    const bills = await prisma.bill.findMany({
-      where: { userId },
-      orderBy: { dueDate: "desc" },
-      take: 20,
-    });
+    // Fetch bills from Supabase
+    const { data: bills, error } = await supabase
+      .from("bills")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("due_date", { ascending: false })
+      .limit(20);
 
-    return NextResponse.json(bills);
-  } catch (error) {
+    if (error) {
+      return errorResponse("Failed to fetch bills", "BILLS_FETCH_ERROR", 500);
+    }
+
+    return successResponse(bills || []);
+  } catch (error: any) {
     console.error("Get bills error:", error);
-    return NextResponse.json({ error: "Failed to fetch bills" }, { status: 500 });
+    return errorResponse("Internal server error", "INTERNAL_ERROR", 500);
   }
 }
 

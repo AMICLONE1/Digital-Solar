@@ -54,17 +54,21 @@ export async function requireAuth(req: NextRequest): Promise<{
   user: any;
   supabase: ReturnType<typeof createClient>;
 } | null> {
-  const supabase = createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-  if (error || !user) {
+    if (error || !user) {
+      return null;
+    }
+
+    return { user, supabase };
+  } catch (error) {
     return null;
   }
-
-  return { user, supabase };
 }
 
 /**

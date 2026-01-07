@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@repo/database";
+import { requireAuth, errorResponse, successResponse } from "@/lib/api/middleware";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
-    const userId = (session.user as any).id;
+    const { user, supabase } = auth;
 
     // Get last 12 months of credits
     const now = new Date();
@@ -21,32 +19,30 @@ export async function GET(req: NextRequest) {
       months.push({ month: date.getMonth() + 1, year: date.getFullYear() });
     }
 
+    // Fetch credits for each month
     const creditsData = await Promise.all(
       months.map(async ({ month, year }) => {
-        const credits = await prisma.creditLedger.aggregate({
-          where: {
-            userId,
-            type: "EARNED",
-            status: "CONFIRMED",
-            month,
-            year,
-          },
-          _sum: {
-            amount: true,
-          },
-        });
+        const { data } = await supabase
+          .from("credit_ledgers")
+          .select("amount")
+          .eq("user_id", user.id)
+          .eq("type", "EARNED")
+          .eq("status", "CONFIRMED")
+          .eq("month", month)
+          .eq("year", year);
+
+        const credits = data?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
 
         return {
           month: new Date(year, month - 1).toLocaleDateString("en-US", { month: "short" }),
-          credits: credits._sum.amount || 0,
+          credits,
         };
       })
     );
 
-    return NextResponse.json(creditsData);
-  } catch (error) {
+    return successResponse(creditsData);
+  } catch (error: any) {
     console.error("Get credits history error:", error);
-    return NextResponse.json({ error: "Failed to fetch credits history" }, { status: 500 });
+    return errorResponse("Failed to fetch credits history", "CREDITS_HISTORY_ERROR", 500);
   }
 }
-

@@ -1,0 +1,281 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "Next.js 14",
+    "React 18",
+    "Tailwind CSS",
+    "Supabase",
+    "PostgreSQL",
+    "Framer Motion",
+    "GSAP",
+    "Three.js",
+    "Zod",
+    "Zustand"
+  ],
+  "features": [
+    {
+      "name": "Authentication System",
+      "description": "User authentication with Supabase, including signup, login, password reset, and session management",
+      "files": [
+        "app/login/page.tsx",
+        "app/signup/page.tsx",
+        "app/forgot-password/page.tsx",
+        "app/reset-password/page.tsx",
+        "app/check-auth/page.tsx",
+        "app/api/auth/check/route.ts",
+        "app/api/auth/logout/route.ts",
+        "lib/supabase/client.ts",
+        "lib/supabase/server.ts",
+        "lib/supabase/middleware.ts"
+      ]
+    },
+    {
+      "name": "Navigation Component",
+      "description": "Main navigation bar with authentication-aware buttons, mobile menu, and SundayGrids-style layout",
+      "files": [
+        "components/nav/Navigation.tsx"
+      ]
+    },
+    {
+      "name": "Landing Page",
+      "description": "Marketing homepage with hero section, problem/solution sections, features, calculator, testimonials, and CTA",
+      "files": [
+        "app/page.tsx",
+        "components/hero/Hero.tsx",
+        "components/hero/ThreeScene.tsx",
+        "components/sections/ProblemSection.tsx",
+        "components/sections/SolutionSection.tsx",
+        "components/sections/FeaturesSection.tsx",
+        "components/sections/SavingsCalculator.tsx",
+        "components/sections/ComparisonTable.tsx",
+        "components/sections/StatsSection.tsx",
+        "components/sections/TestimonialsSection.tsx",
+        "components/sections/TrustSection.tsx",
+        "components/sections/FinalCTASection.tsx",
+        "components/footer/Footer.tsx"
+      ]
+    },
+    {
+      "name": "Reserve Solar Capacity",
+      "description": "SundayGrids-style project reservation flow where users can view and reserve solar capacity from available projects",
+      "files": [
+        "app/reserve/page.tsx",
+        "app/reserve/success/page.tsx",
+        "components/reserve/ProjectSelector.tsx",
+        "components/reserve/CapacitySlider.tsx",
+        "components/reserve/SavingsProjection.tsx",
+        "components/reserve/PaymentSection.tsx",
+        "app/api/reserve/route.ts",
+        "app/api/projects/route.ts",
+        "app/api/projects/[id]/route.ts",
+        "app/api/projects/[id]/availability/route.ts",
+        "app/api/projects/my-projects/route.ts"
+      ]
+    },
+    {
+      "name": "Connect Utility Provider",
+      "description": "Page for linking utility provider and billing details to enable credit application on bills",
+      "files": [
+        "app/connect/page.tsx",
+        "app/api/users/update-utility/route.ts"
+      ]
+    },
+    {
+      "name": "User Dashboard",
+      "description": "Main dashboard showing savings summary, monthly credit graph, project health, environmental impact, bills timeline, and notifications",
+      "files": [
+        "app/dashboard/page.tsx",
+        "components/dashboard/SavingsSummary.tsx",
+        "components/dashboard/MonthlyCreditGraph.tsx",
+        "components/dashboard/ProjectHealthIndicator.tsx",
+        "components/dashboard/EnvironmentalImpact.tsx",
+        "components/dashboard/BillsTimeline.tsx",
+        "app/api/dashboard/savings/route.ts",
+        "app/api/dashboard/credits-history/route.ts",
+        "app/api/dashboard/environmental-impact/route.ts"
+      ]
+    },
+    {
+      "name": "Credit System",
+      "description": "Credit calculation engine, ledger management, and credit availability tracking",
+      "files": [
+        "lib/credit-engine.ts",
+        "lib/ledger.ts",
+        "app/api/credits/available/route.ts",
+        "app/api/credits/calculate/route.ts",
+        "app/api/credits/ledger/route.ts"
+      ]
+    },
+    {
+      "name": "Bill Management",
+      "description": "Bill fetching from BBPS, bill payment with credit application, and bill history tracking",
+      "files": [
+        "app/bills/page.tsx",
+        "components/bills/CurrentBillCard.tsx",
+        "components/bills/BillHistory.tsx",
+        "components/bills/CreditsBreakdown.tsx",
+        "app/api/bills/route.ts",
+        "app/api/bills/fetch/route.ts",
+        "app/api/bills/pay/route.ts",
+        "lib/bbps/client.ts"
+      ]
+    },
+    {
+      "name": "Payment Processing",
+      "description": "Razorpay integration for payment processing, order creation, and webhook handling",
+      "files": [
+        "app/api/payments/create-order/route.ts",
+        "app/api/payments/webhook/route.ts",
+        "lib/payments/razorpay.ts"
+      ]
+    },
+    {
+      "name": "KYC Verification",
+      "description": "KYC status checking and verification with Aadhaar and PAN",
+      "files": [
+        "app/api/kyc/status/route.ts",
+        "app/api/kyc/verify/route.ts"
+      ]
+    },
+    {
+      "name": "Notifications System",
+      "description": "Real-time notification center and notification management",
+      "files": [
+        "components/notifications/NotificationCenter.tsx",
+        "app/api/notifications/route.ts",
+        "lib/notifications.ts"
+      ]
+    },
+    {
+      "name": "Referral System",
+      "description": "Referral code generation, tracking, and rewards",
+      "files": [
+        "components/referrals/ReferralSection.tsx",
+        "app/api/referrals/route.ts"
+      ]
+    },
+    {
+      "name": "User Settings",
+      "description": "User preferences management and profile settings",
+      "files": [
+        "app/settings/page.tsx",
+        "components/settings/UserPreferences.tsx",
+        "app/api/users/preferences/route.ts"
+      ]
+    },
+    {
+      "name": "Onboarding Flow",
+      "description": "Multi-step onboarding process for new users (reserve solar, link utility)",
+      "files": [
+        "app/onboarding/page.tsx"
+      ]
+    },
+    {
+      "name": "Export Functionality",
+      "description": "Data export for savings reports and analytics",
+      "files": [
+        "components/export/ExportButton.tsx",
+        "app/api/export/savings-report/route.ts"
+      ]
+    },
+    {
+      "name": "Activity Logging",
+      "description": "User activity tracking and audit logging",
+      "files": [
+        "lib/activity.ts",
+        "app/api/activity/route.ts"
+      ]
+    },
+    {
+      "name": "Generation Data Management",
+      "description": "Solar generation data upload, validation, and retrieval for projects",
+      "files": [
+        "app/api/generation/upload/route.ts",
+        "app/api/generation/validate/route.ts",
+        "app/api/generation/[projectId]/route.ts"
+      ]
+    },
+    {
+      "name": "UI Components Library",
+      "description": "Reusable UI components including buttons, inputs, cards, modals, toasts, form fields, and loading skeletons",
+      "files": [
+        "components/ui/Button.tsx",
+        "components/ui/Input.tsx",
+        "components/ui/Card.tsx",
+        "components/ui/Modal.tsx",
+        "components/ui/Toast.tsx",
+        "components/ui/FormField.tsx",
+        "components/ui/PasswordStrength.tsx",
+        "components/ui/LoadingSkeleton.tsx",
+        "components/ui/ErrorBoundary.tsx",
+        "components/ui/ClientOnly.tsx",
+        "components/ui/index.ts"
+      ]
+    },
+    {
+      "name": "API Middleware",
+      "description": "Authentication middleware, rate limiting, error handling, and response helpers for API routes",
+      "files": [
+        "lib/api/middleware.ts",
+        "lib/api/auth-helper.ts",
+        "lib/api/client.ts",
+        "lib/api/types.ts"
+      ]
+    },
+    {
+      "name": "Monitoring & Analytics",
+      "description": "Error tracking with Sentry, analytics with PostHog, and monitoring provider",
+      "files": [
+        "lib/monitoring.ts",
+        "components/providers/MonitoringProvider.tsx"
+      ]
+    },
+    {
+      "name": "Security & RBAC",
+      "description": "Security utilities, role-based access control, and security headers",
+      "files": [
+        "lib/security.ts",
+        "lib/rbac.ts",
+        "middleware.ts"
+      ]
+    },
+    {
+      "name": "Design System",
+      "description": "Centralized design tokens, colors, typography, and spacing",
+      "files": [
+        "lib/design-system.ts",
+        "tailwind.config.ts"
+      ]
+    },
+    {
+      "name": "PWA Support",
+      "description": "Progressive Web App support with service worker, manifest, and offline capabilities",
+      "files": [
+        "app/manifest.json/route.ts",
+        "app/sw.js/route.ts",
+        "public/manifest.json",
+        "public/sw.js"
+      ]
+    },
+    {
+      "name": "Public Pages",
+      "description": "Public information pages including about, contact, FAQ, terms, privacy, and compliance",
+      "files": [
+        "app/about/page.tsx",
+        "app/contact/page.tsx",
+        "app/faq/page.tsx",
+        "app/terms/page.tsx",
+        "app/privacy/page.tsx",
+        "app/compliance/page.tsx"
+      ]
+    },
+    {
+      "name": "Health Check",
+      "description": "API health check endpoint for monitoring",
+      "files": [
+        "app/api/health/route.ts"
+      ]
+    }
+  ]
+}
+

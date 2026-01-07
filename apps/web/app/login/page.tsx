@@ -39,11 +39,21 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent form submission if already loading
+    if (loading) {
+      return;
+    }
+    
     setLoading(true);
     setError("");
 
+    // Store form values to prevent them from being cleared
+    const emailValue = email.trim().toLowerCase();
+    const passwordValue = password;
+
     try {
-      console.log("Attempting login for:", email.trim().toLowerCase());
+      console.log("Attempting login for:", emailValue);
       
       // Check if Supabase client is properly configured
       if (!supabase || typeof supabase.auth?.signInWithPassword !== "function") {
@@ -53,8 +63,8 @@ export default function LoginPage() {
       }
       
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
+        email: emailValue,
+        password: passwordValue,
       });
 
       if (authError) {
@@ -73,122 +83,135 @@ export default function LoginPage() {
         return;
       }
 
-      if (data.user) {
-        console.log("Login successful! User:", data.user.id);
-        console.log("Session:", data.session ? "Present" : "Missing");
-        console.log("Email confirmed:", data.user.email_confirmed_at);
+      if (data.user && data.session) {
+        console.log("✅ Login successful! User:", data.user.id);
+        console.log("✅ Session:", data.session ? "Present" : "Missing");
+        
+        // Ensure user record exists (non-blocking, in background)
+        supabase
+          .from("users")
+          .select("id")
+          .eq("id", data.user.id)
+          .maybeSingle()
+          .then(({ data: existingUser, error: userCheckError }) => {
+            if (!existingUser && !userCheckError) {
+              supabase
+                .from("users")
+                .insert({
+                  id: data.user.id,
+                  email: data.user.email,
+                  name: data.user.user_metadata?.name || data.user.email?.split("@")[0] || null,
+                })
+                .catch((createError) => {
+                  console.error("Error creating user profile:", createError);
+                });
+            }
+          })
+          .catch((err) => {
+            console.error("Error checking user profile:", err);
+          });
 
-        // Check if user needs email confirmation
-        if (data.user.email_confirmed_at === null) {
-          // User exists but email not confirmed
-          // Try to proceed anyway if email confirmation is disabled
-          console.log("Email not confirmed, but attempting to proceed...");
-          
-          // Check if we have a session despite email not being confirmed
-          if (!data.session) {
-            setError("Please verify your email address. We can resend the confirmation email if needed.");
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Verify session exists
-        if (!data.session) {
-          console.error("No session after login!");
-          setError("Login successful but session not created. Please try again.");
-          setLoading(false);
-          return;
-        }
-
-        // Wait a moment for session to persist
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Verify session is still there
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (!currentSession) {
-          console.error("Session lost after login!");
-          setError("Session not persisting. Please check Supabase configuration.");
-          setLoading(false);
-          return;
-        }
-
-        console.log("Session verified, redirecting...");
-
-        // Successfully logged in
-        // Check if user needs onboarding or has reservations
-        try {
-          // First, ensure user profile exists in users table
-          const { data: existingProfile } = await supabase
-            .from("users")
-            .select("id, kyc_status, utility_consumer_number")
-            .eq("id", data.user.id)
-            .single();
-
-          // If profile doesn't exist, create a basic one
-          if (!existingProfile) {
-            console.log("User profile not found, creating basic profile...");
-            const { error: createError } = await supabase
+        // Determine redirect path - do this in background, redirect immediately
+        let redirectPath = "/reserve"; // Default: go to reserve page
+        
+        // Start async check but don't wait - redirect immediately with default path
+        Promise.race([
+          Promise.all([
+            supabase
+              .from("allocations")
+              .select("id")
+              .eq("user_id", data.user.id)
+              .limit(1),
+            supabase
               .from("users")
-              .insert({
-                id: data.user.id,
-                email: data.user.email,
-                kyc_status: "PENDING",
-              });
+              .select("utility_consumer_number")
+              .eq("id", data.user.id)
+              .maybeSingle()
+          ]),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 500)) // 500ms timeout - faster
+        ])
+        .then((checkUserData) => {
+          if (checkUserData && Array.isArray(checkUserData)) {
+            const [allocationsResult, profileResult] = checkUserData;
+            const hasReservations = allocationsResult?.data && allocationsResult.data.length > 0;
+            const hasUtility = profileResult?.data?.utility_consumer_number;
 
-            if (createError) {
-              console.error("Error creating user profile:", createError);
-              // Continue anyway - redirect to onboarding
+            let newPath = "/reserve";
+            if (hasReservations && hasUtility) {
+              newPath = "/dashboard";
+            } else if (hasReservations && !hasUtility) {
+              newPath = "/connect";
+            }
+            
+            // Only redirect if we're still on login page
+            if (typeof window !== "undefined" && window.location.pathname === "/login") {
+              console.log("🔄 Updating redirect path to:", newPath);
+              window.location.replace(newPath);
             }
           }
+        })
+        .catch((dbError) => {
+          console.log("DB check failed, using default redirect:", dbError);
+        });
 
-          // Get profile (either existing or newly created)
-          const { data: profile, error: profileError } = await supabase
-            .from("users")
-            .select("kyc_status, utility_consumer_number")
-            .eq("id", data.user.id)
-            .single();
-
-          // If profile is incomplete or doesn't exist, redirect to onboarding
-          if (profileError || !profile || profile.kyc_status !== "VERIFIED" || !profile.utility_consumer_number) {
-            console.log("Profile incomplete or missing, redirecting to onboarding");
-            await new Promise((resolve) => setTimeout(resolve, 300));
-            window.location.href = "/onboarding";
-            return;
-          }
-
-          // Profile is complete - check if user has reserved capacity
-          const { data: allocations, error: allocError } = await supabase
-            .from("allocations")
-            .select("id")
-            .eq("user_id", data.user.id)
-            .limit(1);
-
-          if (allocError) {
-            console.error("Error checking allocations:", allocError);
-            // If we can't check, redirect to reserve page to let them start
-            await new Promise((resolve) => setTimeout(resolve, 300));
-            window.location.href = "/reserve";
-            return;
-          }
-
-          // If user has allocations, go to dashboard; otherwise, go to reserve page
-          const redirectPath = allocations && allocations.length > 0
-            ? "/dashboard"
-            : "/reserve";
-
-          console.log("Redirecting to:", redirectPath, allocations?.length ? "(has reservations)" : "(no reservations)");
+        console.log("🚀 REDIRECTING IMMEDIATELY to:", redirectPath);
+        console.log("📍 Current pathname:", typeof window !== "undefined" ? window.location.pathname : "SSR");
+        
+        // IMMEDIATE redirect - try multiple methods to ensure it works
+        if (typeof window !== "undefined") {
+          console.log("✅ Attempting redirect using multiple methods");
           
-          // Small delay to ensure session is fully persisted
-          await new Promise((resolve) => setTimeout(resolve, 300));
+          // Method 1: Use replace() - most reliable
+          try {
+            window.location.replace(redirectPath);
+            console.log("✅ window.location.replace() called");
+          } catch (e) {
+            console.error("❌ window.location.replace() failed:", e);
+          }
           
-          // Use window.location for reliable redirect
-          window.location.href = redirectPath;
-        } catch (profileError: any) {
-          console.error("Profile check error:", profileError);
-          // Still redirect even if profile check fails - send to onboarding
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          window.location.href = "/onboarding";
+          // Method 2: Also try href immediately
+          try {
+            window.location.href = redirectPath;
+            console.log("✅ window.location.href also set");
+          } catch (e) {
+            console.error("❌ window.location.href failed:", e);
+          }
+          
+          // Method 3: Try router as well
+          try {
+            router.replace(redirectPath);
+            console.log("✅ router.replace() also called");
+          } catch (e) {
+            console.error("❌ router.replace() failed:", e);
+          }
+          
+          // Method 4: Last resort - use assign after short delay
+          setTimeout(() => {
+            if (window.location.pathname === "/login") {
+              console.log("⚠️ Still on login page, trying window.location.assign()");
+              try {
+                window.location.assign(redirectPath);
+              } catch (e) {
+                console.error("❌ All redirect methods failed:", e);
+                setError(`Redirect failed. Please navigate to: ${redirectPath}`);
+                setLoading(false);
+              }
+            }
+          }, 200);
+        } else {
+          // Fallback to router if window is not available (SSR)
+          console.log("⚠️ Window not available, using router");
+          router.replace(redirectPath);
+          router.refresh();
         }
+        
+        // Exit early - redirect is happening
+        return;
+      } else if (data.user && !data.session) {
+        console.error("❌ No session after login!");
+        setError("Login successful but session not created. Please try again.");
+        setLoading(false);
+        return;
       } else {
         console.error("Login failed: No user returned");
         setError("Login failed. Please check your credentials and try again.");
@@ -319,7 +342,7 @@ export default function LoginPage() {
                       try {
                         const { error: resendError } = await supabase.auth.resend({
                           type: "signup",
-                          email: email.trim().toLowerCase(),
+                          email: emailValue,
                         });
                         if (resendError) {
                           setError("Failed to resend email. Please try again later.");

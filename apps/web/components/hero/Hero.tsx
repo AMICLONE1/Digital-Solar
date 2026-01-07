@@ -219,7 +219,7 @@ export default function Hero() {
                 className="absolute inset-0 bg-gradient-to-r from-forest to-forest-light rounded-2xl blur-xl opacity-50"
               />
               <Link
-                href="/signup"
+                href="/reserve"
                 className="group relative px-10 py-5 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-2xl text-lg font-semibold shadow-2xl flex items-center gap-3 overflow-hidden"
               >
                 <motion.span
@@ -227,7 +227,7 @@ export default function Hero() {
                   whileHover={{ x: 5 }}
                   className="relative z-10"
                 >
-                  Start Saving Today
+                  Join Projects
                 </motion.span>
                 <motion.span
                   className="relative z-10 inline-flex items-center justify-center w-9 h-9 bg-white/20 rounded-full group-hover:bg-white/30 calm-transition"

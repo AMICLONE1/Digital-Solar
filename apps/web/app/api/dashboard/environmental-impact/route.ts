@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@repo/database";
+import { requireAuth, errorResponse, successResponse } from "@/lib/api/middleware";
 
 // Constants for calculations
 const CO2_PER_KWH = 0.82; // kg CO2 per kWh (India grid average)
@@ -9,44 +7,48 @@ const TREES_PER_KG_CO2 = 0.05; // Approximate trees equivalent per kg CO2
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
-    const userId = (session.user as any).id;
+    const { user, supabase } = auth;
 
-    // Get user's total allocated capacity
-    const allocations = await prisma.allocation.findMany({
-      where: { userId },
-      include: {
-        capacityBlock: {
-          include: {
-            project: true,
-          },
-        },
-      },
-    });
+    // Get user's allocations
+    const { data: allocations, error: allocError } = await supabase
+      .from("allocations")
+      .select(`
+        id,
+        capacity_kw,
+        project_id,
+        projects (
+          id,
+          total_capacity_kw
+        )
+      `)
+      .eq("user_id", user.id);
+
+    if (allocError) {
+      return errorResponse("Failed to fetch allocations", "ALLOCATIONS_FETCH_ERROR", 500);
+    }
 
     let totalEnergyGenerated = 0;
 
-    // Calculate energy generated based on allocations and project generations
-    for (const allocation of allocations) {
-      const project = allocation.capacityBlock.project;
-      const userKw = allocation.capacityBlock.kw;
-      const projectTotalKw = project.totalKw;
+    // Calculate energy generated based on allocations
+    for (const allocation of allocations || []) {
+      const userKw = allocation.capacity_kw || 0;
+      const projectTotalKw = (allocation.projects as any)?.total_capacity_kw || 1;
 
-      // Get all generations for this project
-      const generations = await prisma.generation.findMany({
-        where: {
-          projectId: project.id,
-          validated: true,
-        },
-      });
+      // Get generations for this project
+      const { data: generations } = await supabase
+        .from("generations")
+        .select("kwh")
+        .eq("project_id", allocation.project_id)
+        .eq("validated", true);
 
       // Calculate user's share of generation
-      for (const gen of generations) {
-        const userShare = (userKw / projectTotalKw) * gen.kwh;
+      for (const gen of generations || []) {
+        const userShare = (userKw / projectTotalKw) * (gen.kwh || 0);
         totalEnergyGenerated += userShare;
       }
     }
@@ -55,14 +57,13 @@ export async function GET(req: NextRequest) {
     const co2Saved = totalEnergyGenerated * CO2_PER_KWH;
     const treesEquivalent = co2Saved * TREES_PER_KG_CO2;
 
-    return NextResponse.json({
-      co2Saved,
-      treesEquivalent,
-      energyGenerated: totalEnergyGenerated,
+    return successResponse({
+      co2Saved: Math.round(co2Saved * 100) / 100,
+      treesEquivalent: Math.round(treesEquivalent * 100) / 100,
+      energyGenerated: Math.round(totalEnergyGenerated * 100) / 100,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Get environmental impact error:", error);
-    return NextResponse.json({ error: "Failed to fetch environmental impact" }, { status: 500 });
+    return errorResponse("Failed to fetch environmental impact", "ENVIRONMENTAL_IMPACT_ERROR", 500);
   }
 }
-

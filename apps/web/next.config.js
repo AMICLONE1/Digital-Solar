@@ -11,6 +11,17 @@ const nextConfig = {
   poweredByHeader: false,
   // Enable SWC minification
   swcMinify: true,
+  // Webpack configuration for optional dependencies
+  webpack: (config, { isServer }) => {
+    // Ignore optional monitoring packages during build
+    // This allows the app to work even if these packages aren't installed
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@sentry/nextjs": false,
+      "posthog-js": false,
+    };
+    return config;
+  },
   // Security headers
   async headers() {
     return [
@@ -28,6 +39,28 @@ const nextConfig = {
           {
             key: "Referrer-Policy",
             value: "origin-when-cross-origin",
+          },
+        ],
+      },
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/javascript",
+          },
+          {
+            key: "Service-Worker-Allowed",
+            value: "/",
+          },
+        ],
+      },
+      {
+        source: "/manifest.json",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/manifest+json",
           },
         ],
       },

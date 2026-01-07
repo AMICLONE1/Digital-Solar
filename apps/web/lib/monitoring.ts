@@ -1,65 +1,99 @@
 /**
  * PowerNetPro Monitoring & Analytics
  * Centralized monitoring setup for error tracking, analytics, and performance
+ * 
+ * Note: Sentry and PostHog are optional dependencies.
+ * If not installed, functions will gracefully degrade.
  */
 
 import type { ComponentType } from "react";
 
-// Error Tracking (Sentry) - Optional
-let Sentry: any = null;
-if (typeof window !== "undefined") {
+// Lazy-loaded modules (will only load if packages are installed)
+let SentryModule: any = null;
+let PostHogModule: any = null;
+let posthogInstance: any = null;
+
+/**
+ * Lazy load Sentry if available
+ * Uses runtime evaluation to avoid webpack static analysis
+ */
+async function getSentry() {
+  if (SentryModule !== null) return SentryModule === false ? null : SentryModule;
+  if (typeof window === "undefined") return null;
+  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) return null;
+
   try {
-    // Only load if DSN is provided
-    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-      Sentry = require("@sentry/nextjs");
-    }
+    // Dynamic import with string concatenation to prevent webpack static analysis
+    const sentryModule = "@sentry" + "/nextjs";
+    SentryModule = await import(/* webpackIgnore: true */ sentryModule);
+    return SentryModule;
   } catch (e) {
-    // Sentry not installed - that's okay
+    // Package not installed - that's okay
+    SentryModule = false; // Cache the failure
+    return null;
   }
 }
 
-// Analytics (PostHog) - Optional
-let posthog: any = null;
-if (typeof window !== "undefined") {
+/**
+ * Lazy load PostHog if available
+ * Uses runtime evaluation to avoid webpack static analysis
+ */
+async function getPostHog() {
+  if (PostHogModule !== null) return PostHogModule === false ? null : PostHogModule;
+  if (typeof window === "undefined") return null;
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return null;
+
   try {
-    // Only load if key is provided
-    if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-      posthog = require("posthog-js").default;
-    }
+    // Dynamic import with string concatenation to prevent webpack static analysis
+    const posthogModule = "posthog" + "-js";
+    PostHogModule = await import(/* webpackIgnore: true */ posthogModule);
+    return PostHogModule.default || PostHogModule;
   } catch (e) {
-    // PostHog not installed - that's okay
+    // Package not installed - that's okay
+    PostHogModule = false; // Cache the failure
+    return null;
   }
 }
 
 /**
  * Initialize monitoring services
  */
-export function initMonitoring() {
+export async function initMonitoring() {
   if (typeof window === "undefined") return;
 
   // Initialize PostHog
+  const posthog = await getPostHog();
   if (posthog && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-    posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com",
-      loaded: (posthog: any) => {
-        if (process.env.NODE_ENV === "development") {
-          console.log("PostHog initialized");
-        }
-      },
-    });
+    try {
+      posthogInstance = posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com",
+        loaded: (ph: any) => {
+          if (process.env.NODE_ENV === "development") {
+            console.log("PostHog initialized");
+          }
+        },
+      });
+    } catch (error) {
+      console.warn("PostHog initialization failed:", error);
+    }
   }
 }
 
 /**
  * Track errors
  */
-export function captureError(error: Error, context?: Record<string, any>) {
-  if (Sentry && Sentry.captureException) {
-    Sentry.captureException(error, {
-      contexts: {
-        custom: context || {},
-      },
-    });
+export async function captureError(error: Error, context?: Record<string, any>) {
+  try {
+    const Sentry = await getSentry();
+    if (Sentry && Sentry.captureException) {
+      Sentry.captureException(error, {
+        contexts: {
+          custom: context || {},
+        },
+      });
+    }
+  } catch (e) {
+    // Ignore errors
   }
   console.error("Error captured:", error, context);
 }
@@ -67,12 +101,16 @@ export function captureError(error: Error, context?: Record<string, any>) {
 /**
  * Track events
  */
-export function trackEvent(
+export async function trackEvent(
   eventName: string,
   properties?: Record<string, any>
 ) {
-  if (posthog) {
-    posthog.capture(eventName, properties);
+  try {
+    if (posthogInstance) {
+      posthogInstance.capture(eventName, properties);
+    }
+  } catch (e) {
+    // Ignore errors
   }
   
   // Also log in development
@@ -84,9 +122,13 @@ export function trackEvent(
 /**
  * Identify user for analytics
  */
-export function identifyUser(userId: string, traits?: Record<string, any>) {
-  if (posthog) {
-    posthog.identify(userId, traits);
+export async function identifyUser(userId: string, traits?: Record<string, any>) {
+  try {
+    if (posthogInstance) {
+      posthogInstance.identify(userId, traits);
+    }
+  } catch (e) {
+    // Ignore errors
   }
 }
 
@@ -94,36 +136,48 @@ export function identifyUser(userId: string, traits?: Record<string, any>) {
  * Reset user (on logout)
  */
 export function resetUser() {
-  if (posthog) {
-    posthog.reset();
+  try {
+    if (posthogInstance) {
+      posthogInstance.reset();
+    }
+  } catch (e) {
+    // Ignore errors
   }
 }
 
 /**
  * Track page views
  */
-export function trackPageView(path: string) {
-  if (posthog) {
-    posthog.capture("$pageview", {
-      path,
-    });
+export async function trackPageView(path: string) {
+  try {
+    if (posthogInstance) {
+      posthogInstance.capture("$pageview", {
+        path,
+      });
+    }
+  } catch (e) {
+    // Ignore errors
   }
 }
 
 /**
  * Performance monitoring
  */
-export function trackPerformance(
+export async function trackPerformance(
   metricName: string,
   value: number,
   unit: string = "ms"
 ) {
-  if (posthog) {
-    posthog.capture("performance_metric", {
-      metric: metricName,
-      value,
-      unit,
-    });
+  try {
+    if (posthogInstance) {
+      posthogInstance.capture("performance_metric", {
+        metric: metricName,
+        value,
+        unit,
+      });
+    }
+  } catch (e) {
+    // Ignore errors
   }
 }
 
@@ -162,13 +216,17 @@ export const trackActions = {
  * Note: For React components, use the ErrorBoundary component instead
  * This is a utility wrapper for Sentry integration
  */
-export function withErrorBoundary<T extends ComponentType<any>>(
+export async function withErrorBoundary<T extends ComponentType<any>>(
   Component: T
-): T {
-  if (Sentry && Sentry.withErrorBoundary) {
-    // Sentry's withErrorBoundary will handle the fallback UI
-    return Sentry.withErrorBoundary(Component);
+): Promise<T> {
+  try {
+    const Sentry = await getSentry();
+    if (Sentry && Sentry.withErrorBoundary) {
+      // Sentry's withErrorBoundary will handle the fallback UI
+      return Sentry.withErrorBoundary(Component);
+    }
+  } catch (e) {
+    // Ignore errors
   }
   return Component;
 }
-

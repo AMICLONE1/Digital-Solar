@@ -7,7 +7,6 @@ const urlsToCache = [
   "/dashboard",
   "/login",
   "/signup",
-  "/offline",
 ];
 
 // Install event - cache resources

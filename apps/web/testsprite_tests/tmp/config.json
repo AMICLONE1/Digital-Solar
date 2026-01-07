@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "omkarkolhe912@gmail.com",
+  "loginPassword": "Radhe@01",
+  "executionArgs": {
+    "projectName": "PowerNetPro-Digital-Solar",
+    "projectPath": "D:\\PowerNetPro\\Digital Solar\\apps\\web",
+    "testIds": [],
+    "additionalInstruction": "Test the complete SundayGrids-style user workflow: landing page, signup, login, reserve solar, connect utility, dashboard. Focus on authentication flow, navigation state, and user journey completion.",
+    "envs": {
+      "API_KEY": "sk-user-833Cr6vL_yfQ2BBkT6dQnLz4fAi7FHX11YRndgSs-mlwEtpZH8rHXar5ENaZsHvKyZQBMyonQnd89N3sNQ_J9XSh90d8khJvcLJmVz3cMdrCqlO1LlSXv2b_aj4tTinfygY"
+    }
+  },
+  "proxy": "http://e616c263-fa19-4aef-9181-6629162de754:UIk2mzY0FHlO1MSIYW6SVPgMHgD2lVvh@tun.testsprite.com:8080"
+}

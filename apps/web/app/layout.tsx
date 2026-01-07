@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { MonitoringProvider } from "@/components/providers/MonitoringProvider";
@@ -28,17 +28,21 @@ export const metadata: Metadata = {
     "Reserve clean energy from large solar plants and reduce your electricity bill every month. No installation required.",
   keywords: ["solar energy", "renewable energy", "electricity savings", "digital solar"],
   manifest: "/manifest.json",
-  themeColor: "#1B5E20",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "PowerNetPro",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#1B5E20",
 };
 
 export default function RootLayout({
@@ -57,14 +61,15 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator) {
+              if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
                 window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js')
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .then((registration) => {
-                      console.log('SW registered:', registration);
+                      console.log('SW registered successfully');
                     })
                     .catch((error) => {
-                      console.log('SW registration failed:', error);
+                      // Silently fail - service worker is optional
+                      console.debug('SW registration skipped:', error.message);
                     });
                 });
               }

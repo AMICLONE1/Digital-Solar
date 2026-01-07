@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@repo/database";
+import { requireAuth, errorResponse, successResponse } from "@/lib/api/middleware";
 import { z } from "zod";
 
 const utilitySchema = z.object({
@@ -12,32 +10,34 @@ const utilitySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
+    const { user, supabase } = auth;
     const body = await req.json();
     const { utilityConsumerNumber, state, discom } = utilitySchema.parse(body);
 
-    const userId = (session.user as any).id;
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        utilityConsumerNumber,
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        utility_consumer_number: utilityConsumerNumber.trim(),
         state,
         discom,
-      },
-    });
+      })
+      .eq("id", user.id);
 
-    return NextResponse.json({ success: true, message: "Utility information updated" });
-  } catch (error) {
+    if (updateError) {
+      return errorResponse("Failed to update utility information", "UTILITY_UPDATE_ERROR", 500);
+    }
+
+    return successResponse({ success: true, message: "Utility information updated" });
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return errorResponse("Validation error", "VALIDATION_ERROR", 400, error.errors);
     }
     console.error("Update utility error:", error);
-    return NextResponse.json({ error: "Failed to update utility information" }, { status: 500 });
+    return errorResponse("Failed to update utility information", "UTILITY_UPDATE_ERROR", 500);
   }
 }
-

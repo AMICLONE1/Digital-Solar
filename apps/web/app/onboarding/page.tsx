@@ -4,17 +4,23 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronRight, Sparkles } from "lucide-react";
+import { Check, ChevronRight, Sparkles, Zap, Link2, CreditCard } from "lucide-react";
 import { FormField } from "@/components/ui/FormField";
 import { useToast, ToastContainer } from "@/components/ui/Toast";
 
-type Step = "kyc" | "utility" | "complete";
+type Step = "reserve" | "utility" | "complete";
 
+/**
+ * Onboarding flow inspired by SundayGrids
+ * Step 1: Reserve Solar (Join a project)
+ * Step 2: Link Utility Provider (Add billing details)
+ * Step 3: Complete - Ready to offset bills
+ */
 export default function OnboardingPage() {
   const router = useRouter();
   const supabase = createClient();
   const toast = useToast();
-  const [currentStep, setCurrentStep] = useState<Step>("kyc");
+  const [currentStep, setCurrentStep] = useState<Step>("reserve");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [user, setUser] = useState<any>(null);
@@ -30,14 +36,33 @@ export default function OnboardingPage() {
         return;
       }
       setUser(user);
+      
+      // Check if user already has reservations and utility linked
+      const { data: allocations } = await supabase
+        .from("allocations")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+      
+      const { data: profile } = await supabase
+        .from("users")
+        .select("utility_consumer_number")
+        .eq("id", user.id)
+        .single();
+
+      // If user has both, skip to complete
+      if (allocations && allocations.length > 0 && profile?.utility_consumer_number) {
+        setCurrentStep("complete");
+      } else if (allocations && allocations.length > 0) {
+        // Has reservations but no utility - go to utility step
+        setCurrentStep("utility");
+      } else {
+        // No reservations - start with reserve
+        setCurrentStep("reserve");
+      }
     };
     getUser();
   }, [router, supabase]);
-
-  // KYC Form State
-  const [aadhaarNumber, setAadhaarNumber] = useState("");
-  const [panNumber, setPanNumber] = useState("");
-  const [name, setName] = useState("");
 
   // Utility Form State
   const [utilityConsumerNumber, setUtilityConsumerNumber] = useState("");
@@ -52,86 +77,19 @@ export default function OnboardingPage() {
     );
   }
 
-  const validateKYC = () => {
-    const errors: Record<string, string> = {};
-    
-    if (!name.trim()) {
-      errors.name = "Full name is required";
-    } else if (name.trim().length < 2) {
-      errors.name = "Name must be at least 2 characters";
-    }
-
-    if (!aadhaarNumber) {
-      errors.aadhaarNumber = "Aadhaar number is required";
-    } else if (aadhaarNumber.length !== 12) {
-      errors.aadhaarNumber = "Aadhaar number must be 12 digits";
-    } else if (!/^\d{12}$/.test(aadhaarNumber)) {
-      errors.aadhaarNumber = "Aadhaar number must contain only digits";
-    }
-
-    if (!panNumber) {
-      errors.panNumber = "PAN number is required";
-    } else if (panNumber.length !== 10) {
-      errors.panNumber = "PAN number must be 10 characters";
-    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNumber)) {
-      errors.panNumber = "Invalid PAN format (e.g., ABCDE1234F)";
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleKYCSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateKYC()) {
-      setError("Please fix the errors below");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({
-          name: name.trim(),
-          aadhaar_number: aadhaarNumber,
-          pan_number: panNumber.toUpperCase(),
-          kyc_status: "VERIFIED", // In production, verify via API
-        })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
-
-      toast.success("KYC information saved successfully!");
-      setCurrentStep("utility");
-      setFieldErrors({});
-    } catch (err: any) {
-      const errorMessage = err.message || "KYC verification failed";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const validateUtility = () => {
     const errors: Record<string, string> = {};
     
     if (!utilityConsumerNumber.trim()) {
-      errors.utilityConsumerNumber = "Utility consumer number is required";
-    } else if (utilityConsumerNumber.trim().length < 5) {
-      errors.utilityConsumerNumber = "Consumer number must be at least 5 characters";
+      errors.utilityConsumerNumber = "Consumer number is required";
     }
 
     if (!state) {
-      errors.state = "Please select your state";
+      errors.state = "State is required";
     }
 
     if (!discom) {
-      errors.discom = "Please select your DISCOM";
+      errors.discom = "DISCOM is required";
     }
 
     setFieldErrors(errors);
@@ -161,11 +119,11 @@ export default function OnboardingPage() {
 
       if (updateError) throw updateError;
 
-      toast.success("Utility information saved successfully!");
+      toast.success("Utility information linked successfully!");
       setCurrentStep("complete");
       setFieldErrors({});
     } catch (err: any) {
-      const errorMessage = err.message || "Failed to update utility information";
+      const errorMessage = err.message || "Failed to link utility information";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -174,14 +132,26 @@ export default function OnboardingPage() {
   };
 
   const steps = [
-    { id: "kyc", label: "KYC Verification", completed: currentStep !== "kyc" },
-    { id: "utility", label: "Utility Connection", completed: currentStep === "complete" },
+    { 
+      id: "reserve", 
+      label: "Reserve Solar", 
+      icon: Zap,
+      description: "Join a solar project",
+      completed: currentStep !== "reserve" 
+    },
+    { 
+      id: "utility", 
+      label: "Link Utility", 
+      icon: Link2,
+      description: "Add billing details",
+      completed: currentStep === "complete" 
+    },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-offwhite via-offwhite to-forest/5 py-12 px-4 sm:px-6 lg:px-8">
       <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <motion.div
@@ -192,47 +162,51 @@ export default function OnboardingPage() {
             <Sparkles className="w-8 h-8 text-offwhite" />
           </motion.div>
           <h1 className="text-4xl font-heading font-bold text-charcoal mb-2">
-            Complete Your Profile
+            Get Started with Digital Solar
           </h1>
-          <p className="text-charcoal/60">Just a few steps to get started</p>
+          <p className="text-charcoal/60">Just 2 simple steps to start saving</p>
         </div>
 
         {/* Progress Stepper */}
         <div className="mb-12">
           <div className="flex items-center justify-between">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <motion.div
-                    initial={{ scale: 0.8 }}
-                    animate={{ scale: 1 }}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold calm-transition ${
-                      step.completed
-                        ? "bg-forest text-offwhite shadow-lg"
-                        : currentStep === step.id
-                          ? "bg-forest text-offwhite ring-4 ring-forest/20 shadow-lg"
-                          : "bg-charcoal/10 text-charcoal/50"
-                    }`}
-                  >
-                    {step.completed ? <Check size={20} /> : index + 1}
-                  </motion.div>
-                  <span
-                    className={`mt-3 text-sm font-medium ${
-                      currentStep === step.id ? "text-forest" : "text-charcoal/50"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
+            {steps.map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <div key={step.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <motion.div
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      className={`w-16 h-16 rounded-full flex items-center justify-center font-semibold calm-transition ${
+                        step.completed
+                          ? "bg-forest text-offwhite shadow-lg"
+                          : currentStep === step.id
+                            ? "bg-forest text-offwhite ring-4 ring-forest/20 shadow-lg"
+                            : "bg-charcoal/10 text-charcoal/50"
+                      }`}
+                    >
+                      {step.completed ? <Check size={24} /> : <Icon size={24} />}
+                    </motion.div>
+                    <span
+                      className={`mt-3 text-sm font-medium text-center ${
+                        currentStep === step.id ? "text-forest" : "text-charcoal/50"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                    <span className="text-xs text-charcoal/40 mt-1">{step.description}</span>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div
+                      className={`h-1 flex-1 mx-4 calm-transition ${
+                        step.completed ? "bg-forest" : "bg-charcoal/10"
+                      }`}
+                    />
+                  )}
                 </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={`h-1 flex-1 mx-4 calm-transition ${
-                      step.completed ? "bg-forest" : "bg-charcoal/10"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -243,112 +217,42 @@ export default function OnboardingPage() {
           className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-charcoal/5"
         >
           <AnimatePresence mode="wait">
-            {currentStep === "kyc" && (
-              <motion.form
-                key="kyc"
+            {currentStep === "reserve" && (
+              <motion.div
+                key="reserve"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                onSubmit={handleKYCSubmit}
-                className="space-y-6"
+                className="text-center space-y-6"
               >
+                <Zap className="w-16 h-16 text-forest mx-auto" />
                 <div>
-                  <h2 className="text-2xl font-heading font-bold text-charcoal mb-2">
-                    KYC Verification
+                  <h2 className="text-3xl font-heading font-bold text-charcoal mb-2">
+                    Step 1: Reserve Solar Capacity
                   </h2>
-                  <p className="text-charcoal/70">
-                    Verify your identity to start using Digital Solar
+                  <p className="text-charcoal/70 mb-6">
+                    Join a solar project and reserve the capacity you need to offset your monthly power bill.
                   </p>
                 </div>
-
-                <FormField
-                  label="Full Name"
-                  error={fieldErrors.name}
-                  required
-                  hint="Enter your full legal name as per Aadhaar"
-                >
-                  <input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: "" });
-                    }}
-                    required
-                    className={`w-full px-4 py-3 bg-offwhite border ${
-                      fieldErrors.name ? "border-red-300" : "border-charcoal/10"
-                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
-                  />
-                </FormField>
-
-                <FormField
-                  label="Aadhaar Number"
-                  error={fieldErrors.aadhaarNumber}
-                  required
-                  hint="12-digit Aadhaar number (numbers only)"
-                >
-                  <input
-                    id="aadhaar"
-                    type="text"
-                    value={aadhaarNumber}
-                    onChange={(e) => {
-                      setAadhaarNumber(e.target.value.replace(/\D/g, "").slice(0, 12));
-                      if (fieldErrors.aadhaarNumber) setFieldErrors({ ...fieldErrors, aadhaarNumber: "" });
-                    }}
-                    placeholder="12-digit Aadhaar"
-                    required
-                    maxLength={12}
-                    className={`w-full px-4 py-3 bg-offwhite border ${
-                      fieldErrors.aadhaarNumber ? "border-red-300" : "border-charcoal/10"
-                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
-                  />
-                </FormField>
-
-                <FormField
-                  label="PAN Number"
-                  error={fieldErrors.panNumber}
-                  required
-                  hint="10-character PAN (e.g., ABCDE1234F)"
-                >
-                  <input
-                    id="pan"
-                    type="text"
-                    value={panNumber}
-                    onChange={(e) => {
-                      setPanNumber(e.target.value.toUpperCase().slice(0, 10));
-                      if (fieldErrors.panNumber) setFieldErrors({ ...fieldErrors, panNumber: "" });
-                    }}
-                    placeholder="ABCDE1234F"
-                    required
-                    maxLength={10}
-                    className={`w-full px-4 py-3 bg-offwhite border ${
-                      fieldErrors.panNumber ? "border-red-300" : "border-charcoal/10"
-                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all uppercase`}
-                  />
-                </FormField>
-
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
-                  >
-                    {error}
-                  </motion.div>
-                )}
-
                 <motion.button
-                  type="submit"
-                  disabled={loading}
-                  whileHover={{ scale: loading ? 1 : 1.02 }}
-                  whileTap={{ scale: loading ? 1 : 0.98 }}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                  onClick={() => router.push("/reserve")}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="px-8 py-4 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-semibold inline-flex items-center gap-2"
                 >
-                  {loading ? "Verifying..." : "Verify & Continue"}
-                  {!loading && <ChevronRight size={20} />}
+                  Browse Projects
+                  <ChevronRight className="w-5 h-5" />
                 </motion.button>
-              </motion.form>
+                <p className="text-sm text-charcoal/50">
+                  You can skip this step and link your utility first, then reserve later
+                </p>
+                <button
+                  onClick={() => setCurrentStep("utility")}
+                  className="text-sm text-forest hover:underline"
+                >
+                  Skip to Link Utility →
+                </button>
+              </motion.div>
             )}
 
             {currentStep === "utility" && (
@@ -360,97 +264,127 @@ export default function OnboardingPage() {
                 onSubmit={handleUtilitySubmit}
                 className="space-y-6"
               >
-                <div>
+                <div className="text-center mb-6">
+                  <Link2 className="w-12 h-12 text-forest mx-auto mb-3" />
                   <h2 className="text-2xl font-heading font-bold text-charcoal mb-2">
-                    Utility Connection
+                    Step 2: Link Your Power Provider
                   </h2>
                   <p className="text-charcoal/70">
-                    Connect your electricity bill to apply credits automatically
+                    Add your billing details to use credits from your digital solar
                   </p>
                 </div>
 
                 <FormField
-                  label="Utility Consumer Number"
+                  label="Consumer Number"
+                  value={utilityConsumerNumber}
+                  onChange={(e) => setUtilityConsumerNumber(e.target.value)}
                   error={fieldErrors.utilityConsumerNumber}
+                  placeholder="Enter your consumer number"
                   required
-                  hint="Your electricity bill consumer number"
-                >
-                  <input
-                    id="consumer-number"
-                    type="text"
-                    value={utilityConsumerNumber}
-                    onChange={(e) => {
-                      setUtilityConsumerNumber(e.target.value);
-                      if (fieldErrors.utilityConsumerNumber) setFieldErrors({ ...fieldErrors, utilityConsumerNumber: "" });
-                    }}
-                    required
-                    className={`w-full px-4 py-3 bg-offwhite border ${
-                      fieldErrors.utilityConsumerNumber ? "border-red-300" : "border-charcoal/10"
-                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
-                  />
-                </FormField>
+                />
 
-                <FormField
-                  label="State"
-                  error={fieldErrors.state}
-                  required
-                >
+                <div>
+                  <label className="block text-sm font-semibold text-charcoal mb-2">
+                    State <span className="text-red-500">*</span>
+                  </label>
                   <select
-                    id="state"
                     value={state}
-                    onChange={(e) => {
-                      setState(e.target.value);
-                      if (e.target.value === "Maharashtra") setDiscom("MSEDCL");
-                      else if (e.target.value === "Delhi") setDiscom("BSES");
-                      else setDiscom("");
-                      if (fieldErrors.state) setFieldErrors({ ...fieldErrors, state: "" });
-                    }}
+                    onChange={(e) => setState(e.target.value)}
+                    className="w-full px-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all"
                     required
-                    className={`w-full px-4 py-3 bg-offwhite border ${
-                      fieldErrors.state ? "border-red-300" : "border-charcoal/10"
-                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
                   >
                     <option value="">Select State</option>
-                    <option value="Maharashtra">Maharashtra</option>
-                    <option value="Delhi">Delhi</option>
                     <option value="Karnataka">Karnataka</option>
+                    <option value="Maharashtra">Maharashtra</option>
                     <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Delhi">Delhi</option>
                     <option value="Gujarat">Gujarat</option>
+                    <option value="Telangana">Telangana</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Haryana">Haryana</option>
+                    <option value="West Bengal">West Bengal</option>
+                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    <option value="Other">Other</option>
                   </select>
-                </FormField>
+                  {fieldErrors.state && (
+                    <p className="text-red-500 text-sm mt-1">{fieldErrors.state}</p>
+                  )}
+                </div>
 
-                <FormField
-                  label="DISCOM"
-                  error={fieldErrors.discom}
-                  required
-                  hint="Your electricity distribution company"
-                >
+                <div>
+                  <label className="block text-sm font-semibold text-charcoal mb-2">
+                    DISCOM <span className="text-red-500">*</span>
+                  </label>
                   <select
-                    id="discom"
                     value={discom}
-                    onChange={(e) => {
-                      setDiscom(e.target.value);
-                      if (fieldErrors.discom) setFieldErrors({ ...fieldErrors, discom: "" });
-                    }}
+                    onChange={(e) => setDiscom(e.target.value)}
+                    className="w-full px-4 py-3 bg-offwhite border border-charcoal/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all"
                     required
-                    className={`w-full px-4 py-3 bg-offwhite border ${
-                      fieldErrors.discom ? "border-red-300" : "border-charcoal/10"
-                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent transition-all`}
                   >
                     <option value="">Select DISCOM</option>
-                    <option value="MSEDCL">MSEDCL</option>
-                    <option value="BSES">BSES</option>
-                    <option value="BESCOM">BESCOM</option>
-                    <option value="TANGEDCO">TANGEDCO</option>
-                    <option value="DGVCL">DGVCL</option>
+                    {state === "Karnataka" && (
+                      <>
+                        <option value="BESCOM">BESCOM</option>
+                        <option value="MESCOM">MESCOM</option>
+                        <option value="HESCOM">HESCOM</option>
+                        <option value="GESCOM">GESCOM</option>
+                      </>
+                    )}
+                    {state === "Maharashtra" && (
+                      <>
+                        <option value="MSEDCL">MSEDCL</option>
+                        <option value="BEST">BEST</option>
+                        <option value="Tata Power">Tata Power</option>
+                      </>
+                    )}
+                    {state === "Tamil Nadu" && (
+                      <>
+                        <option value="TNEB">TNEB</option>
+                        <option value="TANGEDCO">TANGEDCO</option>
+                      </>
+                    )}
+                    {state === "Delhi" && (
+                      <>
+                        <option value="BSES">BSES</option>
+                        <option value="TPDDL">TPDDL</option>
+                        <option value="NDPL">NDPL</option>
+                      </>
+                    )}
+                    {state === "Gujarat" && (
+                      <>
+                        <option value="DGVCL">DGVCL</option>
+                        <option value="MGVCL">MGVCL</option>
+                        <option value="PGVCL">PGVCL</option>
+                        <option value="UGVCL">UGVCL</option>
+                      </>
+                    )}
+                    {state === "Telangana" && (
+                      <>
+                        <option value="TSNPDCL">TSNPDCL</option>
+                        <option value="TSSPDCL">TSSPDCL</option>
+                      </>
+                    )}
+                    {state === "Kerala" && (
+                      <>
+                        <option value="KSEB">KSEB</option>
+                      </>
+                    )}
+                    {!state && (
+                      <option value="" disabled>Select state first</option>
+                    )}
                   </select>
-                </FormField>
+                  {fieldErrors.discom && (
+                    <p className="text-red-500 text-sm mt-1">{fieldErrors.discom}</p>
+                  )}
+                </div>
 
                 {error && (
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="p-4 bg-red-50 border-l-4 border-red-500 rounded-xl text-red-700 text-sm"
                   >
                     {error}
                   </motion.div>
@@ -461,10 +395,10 @@ export default function OnboardingPage() {
                   disabled={loading}
                   whileHover={{ scale: loading ? 1 : 1.02 }}
                   whileTap={{ scale: loading ? 1 : 0.98 }}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full px-6 py-4 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {loading ? "Saving..." : "Complete Setup"}
-                  {!loading && <ChevronRight size={20} />}
+                  {loading ? "Linking..." : "Link Utility Provider"}
+                  <ChevronRight className="w-5 h-5" />
                 </motion.button>
               </motion.form>
             )}
@@ -474,7 +408,7 @@ export default function OnboardingPage() {
                 key="complete"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center space-y-6 py-8"
+                className="text-center space-y-6"
               >
                 <motion.div
                   initial={{ scale: 0 }}
@@ -486,20 +420,30 @@ export default function OnboardingPage() {
                 </motion.div>
                 <div>
                   <h2 className="text-3xl font-heading font-bold text-charcoal mb-2">
-                    Setup Complete!
+                    You&apos;re All Set!
                   </h2>
-                  <p className="text-charcoal/70">
-                    You&apos;re all set to start reserving solar capacity and saving on your bills.
+                  <p className="text-charcoal/70 mb-6">
+                    Start offsetting your power bills with digital solar credits
                   </p>
                 </div>
-                <motion.button
-                  onClick={() => router.push("/reserve")}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="px-8 py-4 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-semibold"
-                >
-                  Reserve Solar Capacity
-                </motion.button>
+                <div className="flex gap-4 justify-center">
+                  <motion.button
+                    onClick={() => router.push("/reserve")}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="px-6 py-3 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-semibold"
+                  >
+                    Reserve Solar
+                  </motion.button>
+                  <motion.button
+                    onClick={() => router.push("/dashboard")}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="px-6 py-3 border-2 border-forest text-forest rounded-xl hover:bg-forest/5 calm-transition font-semibold"
+                  >
+                    Go to Dashboard
+                  </motion.button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

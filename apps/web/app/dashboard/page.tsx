@@ -12,7 +12,7 @@ import BillsTimeline from "@/components/dashboard/BillsTimeline";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { ReferralSection } from "@/components/referrals/ReferralSection";
 import { ExportButton } from "@/components/export/ExportButton";
-import { LogOut, Settings, Sparkles, RefreshCw } from "lucide-react";
+import { LogOut, Settings, Sparkles, RefreshCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useToast, ToastContainer } from "@/components/ui/Toast";
 
@@ -167,6 +167,36 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Connect Utility Prompt */}
+        {user && !user.utility_consumer_number && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl shadow-lg"
+          >
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-charcoal mb-1">Link Your Utility Provider</h3>
+                  <p className="text-sm text-charcoal/70">
+                    Connect your billing details to start using credits from your digital solar on your power bills.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/connect"
+                className="px-6 py-3 bg-gradient-to-r from-forest to-forest-light text-offwhite rounded-xl hover:shadow-lg calm-transition font-semibold flex items-center gap-2 whitespace-nowrap"
+              >
+                Connect Now
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
+          </motion.div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">

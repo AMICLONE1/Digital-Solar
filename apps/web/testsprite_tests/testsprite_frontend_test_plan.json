@@ -1,0 +1,728 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Signup Success",
+    "description": "Verify that a user can successfully sign up with valid details and receives confirmation.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to signup page"
+      },
+      {
+        "type": "action",
+        "description": "Fill signup form with valid email, password, and referral code (optional)"
+      },
+      {
+        "type": "action",
+        "description": "Submit signup form"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm account creation is successful and user is redirected to onboarding"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Signup with Existing Email",
+    "description": "Verify that signing up with an existing email address shows appropriate error message.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to signup page"
+      },
+      {
+        "type": "action",
+        "description": "Fill signup form with an already registered email"
+      },
+      {
+        "type": "action",
+        "description": "Submit signup form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error message indicating email is already in use is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Login Success",
+    "description": "Check login is successful with correct credentials.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Input valid email and password"
+      },
+      {
+        "type": "action",
+        "description": "Click login button"
+      },
+      {
+        "type": "assertion",
+        "description": "User is logged in and redirected to onboarding or dashboard if already onboarded"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Login Failure with Incorrect Password",
+    "description": "Verify login fails with incorrect password and shows error notification.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter valid email with incorrect password"
+      },
+      {
+        "type": "action",
+        "description": "Click login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Login fails and error message is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Password Reset Request",
+    "description": "Verify that users can request password reset and receive reset instructions.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to forgot password page"
+      },
+      {
+        "type": "action",
+        "description": "Enter registered email and submit request"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm password reset instructions sent notification is shown"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Password Reset with Valid Token",
+    "description": "Verify users can reset password successfully with valid reset token link.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to password reset page with valid token"
+      },
+      {
+        "type": "action",
+        "description": "Enter and confirm new password"
+      },
+      {
+        "type": "action",
+        "description": "Submit new password"
+      },
+      {
+        "type": "assertion",
+        "description": "Password is updated and user is notified of successful reset"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Landing Page Load Performance",
+    "description": "Verify landing page loads within 2 seconds with Lighthouse score 90+.",
+    "category": "performance",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to landing page"
+      },
+      {
+        "type": "assertion",
+        "description": "Page load time is under 2 seconds"
+      },
+      {
+        "type": "assertion",
+        "description": "Lighthouse performance score is 90 or above for desktop and mobile"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "User Onboarding Success Flow",
+    "description": "Verify user completes onboarding flow within 12 minutes with progressive validations.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a new user and proceed to onboarding"
+      },
+      {
+        "type": "action",
+        "description": "Complete KYC step with valid Aadhaar and PAN details"
+      },
+      {
+        "type": "assertion",
+        "description": "KYC details accepted and verified"
+      },
+      {
+        "type": "action",
+        "description": "Link utility provider and billing details successfully"
+      },
+      {
+        "type": "assertion",
+        "description": "Utility details saved and linked to user profile"
+      },
+      {
+        "type": "action",
+        "description": "Select a solar project and reserve capacity using slider"
+      },
+      {
+        "type": "assertion",
+        "description": "Selected capacity is within availability and reflected in UI"
+      },
+      {
+        "type": "action",
+        "description": "Proceed to Razorpay payment and complete payment successfully"
+      },
+      {
+        "type": "assertion",
+        "description": "Payment is confirmed and user is redirected to dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Total onboarding duration is less than or equal to 12 minutes"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "KYC Verification Failure with Invalid Data",
+    "description": "Verify KYC verification fails appropriately with invalid Aadhaar or PAN details.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Submit onboarding KYC form with invalid Aadhaar or PAN numbers"
+      },
+      {
+        "type": "assertion",
+        "description": "KYC verification API returns failure and error is shown to user"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Project Capacity Reservation Limits",
+    "description": "Verify users cannot reserve solar capacity beyond project availability.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to project reservation page and select a project"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to reserve solar capacity exceeding available capacity using slider"
+      },
+      {
+        "type": "assertion",
+        "description": "UI prevents capacity selection beyond available limit"
+      },
+      {
+        "type": "action",
+        "description": "Try to submit reservation with invalid capacity via API"
+      },
+      {
+        "type": "assertion",
+        "description": "API returns validation error and reservation is rejected"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Payment Processing via Razorpay",
+    "description": "Verify successful payment processing, order creation, and webhook handling with Razorpay.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger payment initiation for a solar capacity reservation"
+      },
+      {
+        "type": "assertion",
+        "description": "Payment order is created correctly with Razorpay API"
+      },
+      {
+        "type": "action",
+        "description": "Complete payment successfully in Razorpay UI or sandbox"
+      },
+      {
+        "type": "assertion",
+        "description": "Webhook is received and payment status updated in system"
+      },
+      {
+        "type": "assertion",
+        "description": "User receives payment confirmation notification"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Credit Calculation Engine Accuracy",
+    "description": "Verify that credit calculation engine generates accurate, audited credit entries.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Provide monthly solar generation data input for known scenarios"
+      },
+      {
+        "type": "assertion",
+        "description": "Calculated credits match expected values per calculation rules"
+      },
+      {
+        "type": "assertion",
+        "description": "Credit ledger entries are created with versioning and audit trail"
+      },
+      {
+        "type": "action",
+        "description": "Attempt manual credit override"
+      },
+      {
+        "type": "assertion",
+        "description": "Override is accepted or rejected based on business rules and logged"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Monthly Bill Fetching and Display",
+    "description": "Verify monthly bills are auto-fetched via BBPS API and displayed correctly in dashboard.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Ensure utility account is linked for a user"
+      },
+      {
+        "type": "action",
+        "description": "Trigger monthly bill fetching job or API"
+      },
+      {
+        "type": "assertion",
+        "description": "Bill information is retrieved successfully from BBPS API"
+      },
+      {
+        "type": "assertion",
+        "description": "Bill details are displayed correctly in the current and history sections of the dashboard"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Bill Payment Using Credits",
+    "description": "Verify that users can pay bills applying available credits both automatic and manual modes.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Select outstanding bill from dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Choose payment option applying available credits automatically"
+      },
+      {
+        "type": "assertion",
+        "description": "Credits are deducted from ledger accordingly"
+      },
+      {
+        "type": "assertion",
+        "description": "Bill payment is successfully marked paid with receipt generated"
+      },
+      {
+        "type": "action",
+        "description": "Repeat payment selecting manual credit application with partial credit use"
+      },
+      {
+        "type": "assertion",
+        "description": "Ledger and bill status update correctly"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "User Dashboard Data Real-time Update",
+    "description": "Verify dashboard shows real-time savings summaries, graphs, and notifications with data refresh.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and load dashboard page"
+      },
+      {
+        "type": "assertion",
+        "description": "Savings summary, monthly credit graph, project health, and environmental impact components display correct data"
+      },
+      {
+        "type": "action",
+        "description": "Trigger backend data update for credits and bills"
+      },
+      {
+        "type": "assertion",
+        "description": "Dashboard updates reflect new data within expected real-time latency"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Referral Reward Flow",
+    "description": "Verify new user signup with referral code properly rewards referrer after completion.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Generate referral code as existing user"
+      },
+      {
+        "type": "action",
+        "description": "New user signs up using referral code and completes onboarding"
+      },
+      {
+        "type": "assertion",
+        "description": "Referrer's account is credited with referral rewards after new user completes valid actions"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Notification Delivery and Handling",
+    "description": "Verify real-time notifications for credits, payments, and system alerts appear timely and can be acknowledged.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger credit application event"
+      },
+      {
+        "type": "assertion",
+        "description": "User receives notification in notification center promptly"
+      },
+      {
+        "type": "action",
+        "description": "Trigger bill payment completion event"
+      },
+      {
+        "type": "assertion",
+        "description": "User receives payment confirmation notification"
+      },
+      {
+        "type": "action",
+        "description": "User views notifications and marks them as read"
+      },
+      {
+        "type": "assertion",
+        "description": "Notifications are updated as read and do not reappear as new"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Export Savings and Analytics Report",
+    "description": "Verify user can export savings and analytics data as report files.",
+    "category": "functional",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Access export functionality from dashboard or reports page"
+      },
+      {
+        "type": "action",
+        "description": "Select date range and export report"
+      },
+      {
+        "type": "assertion",
+        "description": "Report file downloads with correct data and format"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Security - AES-256 Encryption and CSRF Token Validation",
+    "description": "Verify sensitive data is encrypted with AES-256 and forms enforce CSRF token validation.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Submit form containing sensitive data"
+      },
+      {
+        "type": "assertion",
+        "description": "Data stored in database is encrypted with AES-256"
+      },
+      {
+        "type": "action",
+        "description": "Submit form without valid CSRF token"
+      },
+      {
+        "type": "assertion",
+        "description": "Request is rejected due to invalid CSRF token"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "API Rate Limiting Enforcement",
+    "description": "Verify APIs enforce rate limiting to prevent abuse and respond with appropriate errors upon rate exceeded.",
+    "category": "security",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send successive API requests rapidly exceeding allowed threshold"
+      },
+      {
+        "type": "assertion",
+        "description": "Server responds with rate limit exceeded error (HTTP 429)"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "XSS Protection in User Inputs",
+    "description": "Verify frontend and backend properly sanitize inputs to prevent cross-site scripting.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to submit scripts or malicious inputs in form fields across the application"
+      },
+      {
+        "type": "assertion",
+        "description": "Inputs are sanitized and scripts are not executed in UI or stored in database"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Role-Based Access Control Enforcement",
+    "description": "Verify that user roles restrict access to protected API routes and UI sections appropriately.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a regular user and attempt to access admin-only pages or actions"
+      },
+      {
+        "type": "assertion",
+        "description": "Access is denied and user is redirected or shown forbidden message"
+      },
+      {
+        "type": "action",
+        "description": "Login as admin and access protected routes successfully"
+      },
+      {
+        "type": "assertion",
+        "description": "Admin access granted without error"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "API Health Check Endpoint Functional",
+    "description": "Verify the health check endpoint returns correct status indicating system health.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send request to API health check endpoint"
+      },
+      {
+        "type": "assertion",
+        "description": "Endpoint responds with healthy status, uptime, and any relevant metrics"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "PWA Offline Capabilities",
+    "description": "Verify that the Progressive Web App works offline using cached assets and service workers.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Load the PWA in a browser and cache app shell"
+      },
+      {
+        "type": "action",
+        "description": "Turn off network connection and navigate the app"
+      },
+      {
+        "type": "assertion",
+        "description": "App content is accessible offline with correct UI and no errors"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "User Session Management and Logout",
+    "description": "Verify user sessions are managed properly with timeout and logout functionality.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and stay idle to exceed session timeout period"
+      },
+      {
+        "type": "assertion",
+        "description": "User session expires and login is required again"
+      },
+      {
+        "type": "action",
+        "description": "Login and use UI to logout"
+      },
+      {
+        "type": "assertion",
+        "description": "User is logged out and redirected to login page"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Referral Code Generation and Validation",
+    "description": "Verify generation of referral codes and validation during new user signup.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Generate referral code from referrer user dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Referral code is unique and valid"
+      },
+      {
+        "type": "action",
+        "description": "Use referral code during new user signup"
+      },
+      {
+        "type": "assertion",
+        "description": "Referral code is accepted and tracked"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Data Export Security and Accuracy",
+    "description": "Verify that only authorized users can export data and exported files contain accurate data.",
+    "category": "security",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt data export as authenticated user"
+      },
+      {
+        "type": "assertion",
+        "description": "Export is permitted and data matches report parameters"
+      },
+      {
+        "type": "action",
+        "description": "Attempt data export as unauthorized user or unauthenticated request"
+      },
+      {
+        "type": "assertion",
+        "description": "Export is denied and error returned"
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "System Uptime and Error Rate Monitoring",
+    "description": "Verify monitoring system accurately reports 99.9% uptime and error rates below 0.1%.",
+    "category": "monitoring",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate normal and error conditions"
+      },
+      {
+        "type": "assertion",
+        "description": "Monitoring dashboard reports uptime ≥ 99.9% and error rates ≤ 0.1%"
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "API Response Time Validation",
+    "description": "Verify that all APIs respond within 200ms at 95th percentile under normal load.",
+    "category": "performance",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Execute multiple API calls simulating real user actions"
+      },
+      {
+        "type": "assertion",
+        "description": "Response time is less than 200ms for 95% of requests"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "Audit Logging of User Activities",
+    "description": "Verify user activities including logins, payments, overrides, and data changes are logged correctly.",
+    "category": "security",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Perform sensitive operations as a user, including login, payment, credit overrides"
+      },
+      {
+        "type": "assertion",
+        "description": "Audit logs contain entries with correct user, timestamp, and action details"
+      }
+    ]
+  }
+]

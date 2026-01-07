@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@repo/database";
+import { requireAuth, errorResponse, successResponse } from "@/lib/api/middleware";
 import { getAvailableCredits, applyCreditsToBill } from "@/lib/ledger";
 import { z } from "zod";
 
@@ -12,26 +10,29 @@ const payBillSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
-    const userId = (session.user as any).id;
+    const { user, supabase } = auth;
     const body = await req.json();
     const { billId, applyCredits } = payBillSchema.parse(body);
 
     // Get bill
-    const bill = await prisma.bill.findUnique({
-      where: { id: billId },
-    });
+    const { data: bill, error: billError } = await supabase
+      .from("bills")
+      .select("*")
+      .eq("id", billId)
+      .eq("user_id", user.id)
+      .single();
 
-    if (!bill || bill.userId !== userId) {
-      return NextResponse.json({ error: "Bill not found" }, { status: 404 });
+    if (billError || !bill) {
+      return errorResponse("Bill not found", "BILL_NOT_FOUND", 404);
     }
 
     if (bill.status === "PAID") {
-      return NextResponse.json({ error: "Bill already paid" }, { status: 400 });
+      return errorResponse("Bill already paid", "BILL_ALREADY_PAID", 400);
     }
 
     let creditsToApply = 0;
@@ -39,60 +40,72 @@ export async function POST(req: NextRequest) {
 
     // Apply credits if requested
     if (applyCredits) {
-      const available = await getAvailableCredits(userId);
+      const available = await getAvailableCredits(user.id, supabase);
       creditsToApply = Math.min(available, bill.amount);
       remainingAmount = bill.amount - creditsToApply;
 
       if (creditsToApply > 0) {
-        await applyCreditsToBill(userId, billId, creditsToApply);
+        await applyCreditsToBill(user.id, billId, creditsToApply, supabase);
       }
     }
 
     // If there's remaining amount, create payment record
     let paymentId: string | null = null;
     if (remainingAmount > 0) {
-      const payment = await prisma.payment.create({
-        data: {
-          userId,
-          billId,
+      const { data: payment, error: paymentError } = await supabase
+        .from("payments")
+        .insert({
+          user_id: user.id,
+          bill_id: billId,
           amount: remainingAmount,
           type: "BILL_PAYMENT",
           status: "PENDING",
-        },
-      });
+        })
+        .select("id")
+        .single();
+
+      if (paymentError || !payment) {
+        return errorResponse("Failed to create payment", "PAYMENT_CREATE_ERROR", 500);
+      }
+
       paymentId = payment.id;
 
-      // TODO: Integrate with payment gateway
+      // TODO: Integrate with payment gateway (Razorpay)
       // For now, mark as completed (in production, wait for webhook)
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: { status: "COMPLETED" },
-      });
+      await supabase
+        .from("payments")
+        .update({ status: "COMPLETED" })
+        .eq("id", payment.id);
     }
 
     // Update bill
-    const updatedBill = await prisma.bill.update({
-      where: { id: billId },
-      data: {
-        creditsApplied: creditsToApply,
+    const { data: updatedBill, error: updateError } = await supabase
+      .from("bills")
+      .update({
+        credits_applied: creditsToApply,
         status: remainingAmount === 0 ? "PAID" : "PENDING",
-        paidAt: remainingAmount === 0 ? new Date() : null,
-      },
-    });
+        paid_at: remainingAmount === 0 ? new Date().toISOString() : null,
+      })
+      .eq("id", billId)
+      .select()
+      .single();
 
-    return NextResponse.json({
+    if (updateError) {
+      return errorResponse("Failed to update bill", "BILL_UPDATE_ERROR", 500);
+    }
+
+    return successResponse({
       success: true,
       bill: updatedBill,
       creditsApplied: creditsToApply,
       remainingAmount,
       paymentId,
     });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return errorResponse("Validation error", "VALIDATION_ERROR", 400, error.errors);
     }
     console.error("Pay bill error:", error);
-    return NextResponse.json({ error: "Failed to process payment" }, { status: 500 });
+    return errorResponse("Failed to process payment", "PAYMENT_ERROR", 500);
   }
 }
-

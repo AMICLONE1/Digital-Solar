@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAuth, errorResponse, successResponse } from "@/lib/api/middleware";
 import { getAvailableCredits } from "@/lib/ledger";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
-    const userId = (session.user as any).id;
-    const available = await getAvailableCredits(userId);
+    const { user, supabase } = auth;
+    const available = await getAvailableCredits(user.id, supabase);
 
-    return NextResponse.json({ available });
-  } catch (error) {
+    return successResponse({ available });
+  } catch (error: any) {
     console.error("Get available credits error:", error);
-    return NextResponse.json({ error: "Failed to fetch available credits" }, { status: 500 });
+    return errorResponse("Failed to fetch available credits", "CREDITS_FETCH_ERROR", 500);
   }
 }
 

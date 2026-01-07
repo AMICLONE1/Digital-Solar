@@ -1,0 +1,588 @@
+P
+owerNetPro Digital Solar - Technical Requirements Document (TRD)
+
+Comprehensive Redesign & Development Plan
+---
+
+1. Executive Summary
+1.1 Vision Statement
+PowerNetPro Digital Solar aims to become India's leading digital solar platform, enabling millions of consumers to access clean energy savings without physical installations. The platform combines the trust of financial services (Zerodha), the simplicity of consumer apps (Swiggy), and the premium aesthetics of tech products (Tesla).
+
+1.2 Business Objectives
+User Acquisition: 100,000+ active users within 12 months
+Revenue Target: ₹50 Cr+ in reservation fees in Year 1
+Market Position: #1 digital solar platform in India
+User Satisfaction: 4.5+ star rating, <2% churn rate
+Trust Metrics: Bank-grade security, regulatory compliance
+1.3 Core Value Proposition
+"Solar Savings. Without Panels." - Enable every Indian household to reduce electricity bills by 20-30% through digital solar capacity reservation, with zero installation, zero maintenance, and instant activation.---
+
+2. Business Requirements
+2.1 User Segments
+Primary: Urban middle-class (₹20k-₹1L monthly income, 25-45 years)
+Secondary: Environmentally conscious millennials/Gen-Z
+Tertiary: Tech-savvy early adopters
+Enterprise: Small businesses, shops, offices
+2.2 Core Business Flows
+2.2.1 User Onboarding Flow
+Landing Page → Sign Up (30s) → KYC Verification (5min) → 
+Utility Connection (2min) → Reserve Capacity (3min) → 
+Payment (2min) → Dashboard Access
+Total Time: ~12 minutes
+
+
+2.2.2 Credit Generation Flow
+Monthly Generation Data → Credit Calculation Engine → 
+Credit Ledger Entry → Bill Fetching (BBPS) → 
+Auto-Apply Credits → Bill Payment → User Notification
+
+
+2.3 Revenue Model
+One-time Reservation Fee: ₹X per kW reserved
+Platform Commission: X% of reservation fees
+Future: Subscription tiers, premium features
+2.4 Compliance Requirements
+KYC: Aadhaar/PAN verification (mandatory)
+Financial: RBI compliance for payment processing
+Data Privacy: GDPR/DPDP Act compliance
+Energy: Regulatory compliance with DISCOM rules
+---
+
+3. User Personas & Journey Maps
+3.1 Primary Persona: "Rajesh - The Cost-Conscious Homeowner"
+Age: 38, Software Engineer
+Location: Bangalore
+Pain Points: High electricity bills (₹3,000-5,000/month), wants solar but can't install
+Goals: Reduce bills by 20-30%, contribute to environment
+Tech Comfort: High
+Journey: Research → Compare → Sign Up → Reserve → Monitor Savings
+3.2 Secondary Persona: "Priya - The Eco-Conscious Professional"
+Age: 28, Marketing Manager
+Location: Mumbai
+Pain Points: Wants to go green, limited rooftop space
+Goals: Environmental impact, modern solution
+Tech Comfort: Very High
+Journey: Discovery → Trust Building → Quick Sign Up → Share Experience
+3.3 Journey Map: First-Time User
+Awareness → Interest → Consideration → Action → Retention → Advocacy
+   ↓          ↓            ↓           ↓         ↓          ↓
+Landing   Calculator   Comparison  Sign Up   Dashboard  Referral
+Page      Interaction   Table       Flow      Usage      Program
+---
+
+4. Technical Architecture Redesign
+4.1 System Architecture Overview
+Monitoring & Analytics
+External Integrations
+Service Layer
+API Layer
+Edge Layer
+Client Layer
+LoggingAxiom/Logtail
+AnalyticsPostHog
+Error TrackingSentry
+MetricsVercel Analytics
+RazorpayPayments
+BBPS APIBill Fetching
+KYC ProviderAadhaar/PAN
+Email ServiceResend/SendGrid
+SMS ServiceTwilio
+Supabase Auth
+Supabase PostgreSQL
+Supabase Realtime
+Supabase Storage
+Job QueueBullMQ
+Next.js API Routes
+Auth Middleware
+Rate Limiting
+CDNVercel Edge
+Redis Cache
+Web AppNext.js 14
+Mobile WebPWA
+
+
+4.2 Technology Stack
+4.2.1 Frontend Stack
+| Technology | Version | Purpose | Rationale ||------------|---------|----------|-----------|| Next.js | 15.x (latest) | React Framework | App Router, Server Components, Edge Runtime || React | 19.x | UI Library | Latest features, concurrent rendering || TypeScript | 5.6+ | Type Safety | Strict mode, better DX || Tailwind CSS | 4.x | Styling | Utility-first, performance || Framer Motion | 11.x | Animations | Smooth, performant animations || GSAP | 3.12+ | Advanced Animations | ScrollTrigger, timeline control || Three.js | r160+ | 3D Graphics | Premium visualizations || Zustand | 5.x | State Management | Lightweight, simple || React Query | 5.x | Data Fetching | Caching, synchronization || Zod | 3.23+ | Validation | Type-safe schemas |
+
+4.2.2 Backend Stack
+| Technology | Purpose | Rationale ||------------|---------|-----------|| Supabase | Auth, Database, Realtime | Managed PostgreSQL, built-in auth || PostgreSQL | Primary Database | ACID compliance, JSON support || BullMQ | Job Queue | Background processing, retries || Redis | Caching, Sessions | Fast, scalable caching |
+
+4.2.3 Infrastructure
+Hosting: Vercel (Edge Network, Global CDN)
+Database: Supabase (Managed PostgreSQL)
+CDN: Vercel Edge Network
+Monitoring: Vercel Analytics + Sentry + PostHog
+Logging: Axiom or Logtail
+4.3 Database Schema Enhancements
+4.3.1 New Tables Required
+-- User Preferences
+CREATE TABLE user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES users(id),
+  theme TEXT DEFAULT 'light',
+  notifications JSONB DEFAULT '{}',
+  language TEXT DEFAULT 'en',
+  currency TEXT DEFAULT 'INR'
+);
+
+-- Referral System
+CREATE TABLE referrals (
+  id UUID PRIMARY KEY,
+  referrer_id UUID REFERENCES users(id),
+  referred_id UUID REFERENCES users(id),
+  status TEXT, -- PENDING, COMPLETED, REWARDED
+  reward_amount DECIMAL(10,2),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User Activity Logs
+CREATE TABLE activity_logs (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  action TEXT,
+  metadata JSONB,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Notifications
+CREATE TABLE notifications (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  type TEXT,
+  title TEXT,
+  message TEXT,
+  read BOOLEAN DEFAULT FALSE,
+  action_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+4.4 API Architecture
+4.4.1 RESTful API Design
+/api/v1/
+  ├── auth/
+  │   ├── signup
+  │   ├── login
+  │   ├── logout
+  │   ├── refresh
+  │   └── forgot-password
+  ├── users/
+  │   ├── profile
+  │   ├── preferences
+  │   └── activity
+  ├── projects/
+  │   ├── list
+  │   ├── [id]
+  │   └── [id]/availability
+  ├── reservations/
+  │   ├── create
+  │   ├── list
+  │   └── [id]
+  ├── credits/
+  │   ├── available
+  │   ├── ledger
+  │   └── history
+  ├── bills/
+  │   ├── list
+  │   ├── fetch
+  │   └── pay
+  └── payments/
+      ├── create-order
+      └── webhook
+
+
+4.4.2 Real-time Subscriptions
+User profile updates
+Credit ledger changes
+Bill status updates
+Project availability changes
+Notification delivery
+---
+
+5. Design System & UI/UX Guidelines
+5.1 Design Principles
+Trust First: Bank-grade security indicators, transparent pricing
+Simplicity: 3-click rule for all primary actions
+Premium Aesthetics: Tesla-like polish, attention to detail
+Accessibility: WCAG 2.1 AA compliance
+Performance: <2s page load, <100ms interaction response
+5.2 Color Palette
+5.2.1 Primary Colors
+--forest: #1B5E20;        /* Primary brand color */
+--forest-light: #2E7D32;  /* Hover states */
+--gold: #D4AF37;          /* Accent, CTAs */
+--charcoal: #1A1A1A;      /* Text, dark backgrounds */
+--offwhite: #F5F5F5;      /* Light backgrounds */
+
+
+5.2.2 Semantic Colors
+--success: #10B981;       /* Green */
+--error: #EF4444;         /* Red */
+--warning: #F59E0B;       /* Amber */
+--info: #3B82F6;         /* Blue */
+
+
+5.3 Typography
+Headings: Playfair Display / DM Serif Display (elegant, premium)
+Body: Inter (readable, modern)
+Monospace: JetBrains Mono (code, numbers)
+5.4 Component Library Structure
+components/
+├── ui/                    # Base components
+│   ├── Button.tsx
+│   ├── Input.tsx
+│   ├── Card.tsx
+│   ├── Modal.tsx
+│   ├── Toast.tsx
+│   └── Skeleton.tsx
+├── forms/                 # Form components
+│   ├── FormField.tsx
+│   ├── PasswordStrength.tsx
+│   └── ValidationMessage.tsx
+├── layout/                 # Layout components
+│   ├── Navigation.tsx
+│   ├── Footer.tsx
+│   └── Container.tsx
+├── sections/              # Page sections
+│   ├── Hero.tsx
+│   ├── SavingsCalculator.tsx
+│   └── ...
+└── features/              # Feature-specific
+    ├── dashboard/
+    ├── reservation/
+    └── billing/
+
+
+5.5 Animation Guidelines
+Micro-interactions: 200-300ms duration
+Page transitions: 400-500ms with easing
+Scroll animations: Trigger at 70% viewport
+Loading states: Skeleton screens > spinners
+Error states: Gentle shake, clear messaging
+5.6 Responsive Breakpoints
+sm: 640px   /* Mobile landscape */
+md: 768px   /* Tablet */
+lg: 1024px  /* Desktop */
+xl: 1280px  /* Large desktop */
+2xl: 1536px /* Extra large */
+---
+
+6. Feature Specifications
+6.1 Landing Page Redesign
+6.1.1 Hero Section
+Value Proposition: "Solar Savings. Without Panels."
+Subheading: "Reduce your electricity bill by 20-30% in 3 minutes"
+CTAs: Primary (Get Started), Secondary (Calculate Savings)
+Visual: 3D solar grid animation (Three.js)
+Trust Indicators: "Join 10,000+ Solar Savers", Security badges
+Stats Bar: Animated counters (Savings, Users, CO₂)
+6.1.2 Problem Section
+Visual: Animated cityscape → blocked rooftops
+Key Points: 
+No rooftop access
+High installation costs
+Maintenance hassles
+Long payback periods
+6.1.3 Solution Section
+Interactive Capacity Blocks: Visual representation
+3-Step Process:
+Reserve Capacity (3 min)
+Get Monthly Credits
+Save on Bills
+Animated Step Cards: Hover effects, progress indicators
+6.1.4 Enhanced Savings Calculator
+Inputs: 
+Average monthly bill (₹500 - ₹50,000)
+Desired savings percentage (25% - 100%)
+Outputs:
+Monthly savings
+Reserved solar (kW)
+Energy/month (kWh)
+Annual savings
+Lifetime savings (12.3 years)
+One-time fee
+Features: Real-time updates, animated numbers, chart visualization
+6.1.5 Comparison Table
+Comparison Points:
+Best For
+Requirements
+Safeguards
+Savings on Bill
+Flexibility
+Design: Side-by-side, color-coded, animated reveals
+6.1.6 Testimonials Section
+Format: Carousel with 4-6 testimonials
+Elements: 5-star ratings, customer photos, quotes, publication logos
+Animation: Smooth transitions, 3D card effects
+6.1.7 Trust Section
+Elements: 
+Security badges (SSL, ISO, etc.)
+Partner logos
+Certifications
+Awards
+Design: Premium dark theme, 3D card animations
+6.1.8 Final CTA Section
+Design: Premium gradient background
+Content: Stats row, dual CTAs, trust badges
+Animation: Icon entrances, shine effects
+6.2 User Dashboard Redesign
+6.2.1 Dashboard Layout
+┌─────────────────────────────────────────┐
+│  Header: Welcome, Last Updated, Refresh │
+├─────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌────────┐│
+│  │ Savings  │  │ Credits  │  │  CO₂   ││
+│  │ Summary  │  │ Available│  │ Saved  ││
+│  └──────────┘  └──────────┘  └────────┘│
+├─────────────────────────────────────────┤
+│  ┌──────────────────┐  ┌──────────────┐│
+│  │ Monthly Credits  │  │ Project      ││
+│  │ Graph (12 months)│  │ Health       ││
+│  └──────────────────┘  └──────────────┘│
+├─────────────────────────────────────────┤
+│  ┌─────────────────────────────────────┐│
+│  │ Bills Timeline                     ││
+│  │ (Recent bills with credit applied) ││
+│  └─────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+
+
+6.2.2 Key Features
+Real-time Updates: Supabase subscriptions
+Interactive Charts: Recharts with tooltips
+Quick Actions: Pay Bill, Reserve More, View History
+Notifications: Toast system for important updates
+Export: Download savings report (PDF)
+6.3 Onboarding Flow Redesign
+6.3.1 Multi-Step Form
+Step 1: Personal Info (Name, Email, Phone)
+Step 2: KYC (Aadhaar, PAN)
+Step 3: Utility Connection (Consumer Number, State, DISCOM)
+Step 4: Review & Confirm
+6.3.2 Features
+Progress Indicator: Visual progress bar
+Auto-save: Draft saving
+Validation: Real-time field validation
+Help Text: Contextual help for each field
+Skip Options: Optional fields clearly marked
+6.4 Reservation Flow Redesign
+6.4.1 Project Selection
+Grid View: Cards with project details
+Filters: State, capacity, availability
+Map View: Optional geographic visualization
+Comparison: Side-by-side project comparison
+6.4.2 Capacity Selection
+Interactive Slider: 1-20 kW range
+Visual Feedback: Real-time savings projection
+Recommendations: "Based on your bill, we recommend X kW"
+6.4.3 Payment Integration
+Payment Methods: Razorpay (Cards, UPI, Net Banking, Wallets)
+Security: PCI-DSS compliant
+Receipt: Instant email receipt
+Confirmation: Success page with next steps
+6.5 Credit System Enhancements
+6.5.1 Credit Calculation Engine
+Formula: (User_kW / Total_Project_kW) × Actual_Generation_kWh × Fixed_Rate
+Versioning: Track calculation formula versions
+Audit Trail: Complete ledger with timestamps
+Disputes: Mechanism for credit disputes
+6.5.2 Credit Application
+Auto-Apply: Automatic application to bills
+Manual Override: User can choose to apply manually
+Expiry: Credit expiry rules (if applicable)
+Notifications: Email/SMS when credits applied
+6.6 Bill Management
+6.6.1 Bill Fetching (BBPS)
+Auto-Fetch: Monthly automatic fetching
+Manual Fetch: User-triggered fetch
+Multiple Bills: Support for multiple connections
+Bill Parsing: OCR/API-based parsing
+6.6.2 Bill Payment
+Payment Options: Full payment, partial with credits
+Credit Application: Automatic credit deduction
+Payment Gateway: Razorpay integration
+Receipts: Digital receipts, email confirmation
+---
+
+7. Security & Compliance
+7.1 Security Requirements
+Authentication: Supabase Auth (JWT tokens)
+Authorization: Row Level Security (RLS) policies
+Data Encryption: AES-256 at rest, TLS 1.3 in transit
+PII Protection: Encryption for Aadhaar, PAN numbers
+Rate Limiting: API rate limits (100 req/min per user)
+CSRF Protection: Next.js built-in CSRF tokens
+XSS Prevention: Input sanitization, Content Security Policy
+7.2 Compliance
+KYC: Aadhaar/PAN verification (mandatory)
+Data Privacy: DPDP Act compliance
+Financial: RBI guidelines for payment processing
+Audit Logging: All sensitive operations logged
+7.3 Security Headers
+{
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Content-Security-Policy': "default-src 'self'; ..."
+}
+---
+
+8. Performance Requirements
+8.1 Core Web Vitals Targets
+LCP (Largest Contentful Paint): < 2.5s
+FID (First Input Delay): < 100ms
+CLS (Cumulative Layout Shift): < 0.1
+FCP (First Contentful Paint): < 1.8s
+TTI (Time to Interactive): < 3.8s
+8.2 Optimization Strategies
+Code Splitting: Route-based, component-based
+Image Optimization: Next.js Image component, WebP format
+Font Optimization: Next.js font optimization
+Caching: 
+Static pages: ISR (Incremental Static Regeneration)
+API routes: Redis caching (5min TTL)
+Assets: CDN caching (1 year)
+Lazy Loading: Components, images, charts
+8.3 Monitoring
+Real User Monitoring: Vercel Analytics
+Error Tracking: Sentry
+Performance Monitoring: Web Vitals API
+Uptime Monitoring: External service (UptimeRobot)
+---
+
+9. Implementation Phases
+Phase 1: Foundation (Weeks 1-4)
+Goal: Establish core architecture and design systemTasks:
+
+Upgrade to Next.js 15, React 19
+Implement design system (components, colors, typography)
+Set up monitoring and error tracking
+Database schema enhancements
+API architecture redesign
+Authentication flow improvements
+Deliverables:
+
+Updated tech stack
+Component library (20+ base components)
+Design system documentation
+API documentation
+Phase 2: Landing Page Redesign (Weeks 5-8)
+Goal: Create world-class landing pageTasks:
+
+Hero section redesign
+Enhanced savings calculator
+Comparison table
+Testimonials section
+Trust section
+Final CTA section
+Mobile optimization
+Deliverables:
+
+Fully redesigned landing page
+<2s load time
+90+ Lighthouse score
+Phase 3: User Experience (Weeks 9-12)
+Goal: Improve user onboarding and core flowsTasks:
+
+Onboarding flow redesign
+Dashboard redesign
+Reservation flow improvements
+Bill management enhancements
+Real-time updates implementation
+Deliverables:
+
+Streamlined onboarding (<12 min)
+Enhanced dashboard
+Improved reservation flow
+Phase 4: Advanced Features (Weeks 13-16)
+Goal: Add advanced features and integrationsTasks:
+
+Referral system
+Notification system
+Export functionality
+Advanced analytics
+Mobile PWA
+Email/SMS integration
+Deliverables:
+
+Referral program
+Notification center
+PWA support
+Phase 5: Polish & Launch (Weeks 17-20)
+Goal: Final polish and production readinessTasks:
+
+Performance optimization
+Security audit
+Accessibility audit
+User testing
+Documentation
+Production deployment
+Deliverables:
+
+Production-ready application
+Complete documentation
+95+ Lighthouse score
+---
+
+10. Success Metrics
+10.1 Business Metrics
+User Acquisition: 100,000+ users in 12 months
+Conversion Rate: 15%+ landing page → signup
+Reservation Rate: 60%+ signup → reservation
+Revenue: ₹50 Cr+ in Year 1
+Churn Rate: <2% monthly
+10.2 Technical Metrics
+Page Load Time: <2s (95th percentile)
+API Response Time: <200ms (95th percentile)
+Uptime: 99.9%+
+Error Rate: <0.1%
+Lighthouse Score: 95+ (all categories)
+10.3 User Experience Metrics
+NPS (Net Promoter Score): 50+
+User Satisfaction: 4.5+ stars
+Task Completion Rate: 90%+
+Support Tickets: <5% of users
+---
+
+11. Risk Mitigation
+11.1 Technical Risks
+Database Performance: Implement caching, query optimization
+Third-party Dependencies: Vendor lock-in mitigation, fallbacks
+Scalability: Horizontal scaling architecture
+11.2 Business Risks
+Regulatory Changes: Compliance monitoring, legal review
+Market Competition: Continuous innovation, unique value prop
+User Trust: Transparent operations, security focus
+---
+
+12. Documentation Requirements
+12.1 Technical Documentation
+API documentation (OpenAPI/Swagger)
+Component library documentation (Storybook)
+Database schema documentation
+Deployment guides
+Troubleshooting guides
+12.2 User Documentation
+User guides (video + text)
+FAQ updates
+Help center
+Onboarding tutorials
+---
+
+13. Appendices
+13.1 File Structure Reference
+Key files to modify/create:
+
+apps/web/app/page.tsx - Landing page
+apps/web/app/dashboard/page.tsx - Dashboard
+apps/web/app/onboarding/page.tsx - Onboarding
+apps/web/components/ui/* - Component library
+apps/web/lib/design-system.ts - Design tokens
+apps/web/app/api/**/* - API routes
+13.2 Third-party Services
+Supabase: Auth, Database, Realtime
+Razorpay: Payment processing
+BBPS: Bill fetching

@@ -1,36 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@repo/database";
+import { requireAuth, errorResponse, successResponse } from "@/lib/api/middleware";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
-    const userId = (session.user as any).id;
+    const { user, supabase } = auth;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        kycStatus: true,
-        utilityConsumerNumber: true,
-      },
-    });
+    const { data: userData, error } = await supabase
+      .from("users")
+      .select("kyc_status, utility_consumer_number")
+      .eq("id", user.id)
+      .single();
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (error) {
+      return errorResponse("Failed to fetch user data", "USER_FETCH_ERROR", 500);
     }
 
-    return NextResponse.json({
-      kycStatus: user.kycStatus,
-      hasUtility: !!user.utilityConsumerNumber,
+    if (!userData) {
+      return errorResponse("User not found", "USER_NOT_FOUND", 404);
+    }
+
+    return successResponse({
+      kycStatus: userData.kyc_status || "PENDING",
+      hasUtility: !!userData.utility_consumer_number,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Get KYC status error:", error);
-    return NextResponse.json({ error: "Failed to get KYC status" }, { status: 500 });
+    return errorResponse("Internal server error", "INTERNAL_ERROR", 500);
   }
 }
-

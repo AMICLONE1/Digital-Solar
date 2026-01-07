@@ -25,9 +25,11 @@ export default function ResetPasswordPage() {
     const hash = searchParams.get("hash");
     if (!hash) {
       toast.error("Invalid reset link. Please request a new one.");
-      setTimeout(() => router.push("/forgot-password"), 2000);
+      const timer = setTimeout(() => router.push("/forgot-password"), 2000);
+      return () => clearTimeout(timer);
     }
-  }, [searchParams, router, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]); // Only depend on searchParams to avoid infinite loops
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
