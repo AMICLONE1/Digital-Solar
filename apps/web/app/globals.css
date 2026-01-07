@@ -1,0 +1,120 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=DM+Serif+Display&family=Space+Grotesk:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --forest-green: #1b5e20;
+  --off-white: #faf9f6;
+  --gold: #d4af37;
+  --charcoal: #2c2c2c;
+}
+
+@layer base {
+  * {
+    @apply border-charcoal/10;
+  }
+
+  body {
+    @apply bg-offwhite text-charcoal font-body antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .calm-transition {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-white/20;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-forest to-forest-light bg-clip-text text-transparent;
+  }
+  
+  /* Premium scroll animations */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+  
+  /* Text reveal animation */
+  @keyframes textReveal {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Shimmer effect */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+  
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 3s infinite;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-offwhite-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-charcoal/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-charcoal/50;
+}
+
+/* Selection styling */
+::selection {
+  @apply bg-forest/20 text-charcoal;
+}
+
+/* Focus ring styling */
+*:focus-visible {
+  @apply outline-none ring-2 ring-forest ring-offset-2 ring-offset-offwhite;
+}
+

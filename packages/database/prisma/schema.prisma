@@ -1,0 +1,261 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  OPS
+  FINANCE
+}
+
+enum KYCStatus {
+  PENDING
+  IN_PROGRESS
+  VERIFIED
+  REJECTED
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  FULLY_ALLOCATED
+  ARCHIVED
+}
+
+enum CapacityBlockStatus {
+  AVAILABLE
+  RESERVED
+  ALLOCATED
+}
+
+enum CreditLedgerType {
+  EARNED
+  APPLIED
+  EXPIRED
+}
+
+enum CreditLedgerStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  RESERVATION
+  BILL_PAYMENT
+  REFUND
+}
+
+model User {
+  id                      String    @id @default(cuid())
+  email                   String?   @unique
+  phone                   String    @unique
+  name                    String?
+  kycStatus               KYCStatus @default(PENDING)
+  aadhaarNumber           String?   @unique
+  panNumber               String?
+  utilityConsumerNumber   String?
+  state                   String?
+  discom                  String?
+  role                    UserRole  @default(USER)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  deletedAt               DateTime?
+
+  // Relations
+  allocations             Allocation[]
+  creditLedgers           CreditLedger[]
+  bills                   Bill[]
+  payments                Payment[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([kycStatus])
+  @@map("users")
+}
+
+model Project {
+  id              String          @id @default(cuid())
+  spvId           String          @unique
+  name            String
+  totalKw         Float
+  ratePerKwh      Float           // Fixed credit rate in ₹
+  location        String
+  state           String
+  status          ProjectStatus   @default(DRAFT)
+  description     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  capacityBlocks  CapacityBlock[]
+  generations     Generation[]
+
+  @@index([status])
+  @@index([state])
+  @@map("projects")
+}
+
+model CapacityBlock {
+  id              String              @id @default(cuid())
+  projectId       String
+  kw              Float
+  status          CapacityBlockStatus @default(AVAILABLE)
+  allocatedAt     DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  allocation      Allocation?
+
+  @@index([projectId])
+  @@index([status])
+  @@map("capacity_blocks")
+}
+
+model Allocation {
+  id              String          @id @default(cuid())
+  userId          String
+  capacityBlockId String          @unique
+  paymentId       String?         @unique
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  capacityBlock   CapacityBlock   @relation(fields: [capacityBlockId], references: [id], onDelete: Cascade)
+  payment         Payment?        @relation(fields: [paymentId], references: [id])
+
+  @@index([userId])
+  @@index([capacityBlockId])
+  @@map("allocations")
+}
+
+model Generation {
+  id              String    @id @default(cuid())
+  projectId       String
+  month           Int       // 1-12
+  year            Int
+  kwh             Float
+  validated       Boolean   @default(false)
+  source          String?   // SCADA, SMART_METER, MANUAL
+  validatedBy    String?   // User ID who validated
+  validatedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, month, year])
+  @@index([projectId])
+  @@index([year, month])
+  @@map("generations")
+}
+
+model CreditLedger {
+  id              String              @id @default(cuid())
+  userId          String
+  amount          Float
+  type            CreditLedgerType
+  status          CreditLedgerStatus  @default(PENDING)
+  month           Int?
+  year            Int?
+  refId           String?             // Reference to Generation, Bill, etc.
+  refType         String?             // GENERATION, BILL, etc.
+  description     String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([year, month])
+  @@map("credit_ledgers")
+}
+
+model Bill {
+  id              String          @id @default(cuid())
+  userId          String
+  discom          String
+  billNumber      String?
+  amount          Float
+  creditsApplied  Float           @default(0)
+  dueDate         DateTime
+  status          BillStatus      @default(PENDING)
+  bbpsBillId     String?          @unique
+  fetchedAt      DateTime?
+  paidAt         DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments        Payment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([bbpsBillId])
+  @@map("bills")
+}
+
+model Payment {
+  id              String          @id @default(cuid())
+  userId          String
+  amount          Float
+  type            PaymentType
+  status          PaymentStatus  @default(PENDING)
+  transactionId   String?        @unique
+  gateway         String?        // RAZORPAY, STRIPE, etc.
+  gatewayOrderId  String?
+  gatewayPaymentId String?
+  metadata        Json?          // Additional payment data
+  refundedAt      DateTime?
+  refundAmount    Float?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bill            Bill?          @relation(fields: [billId], references: [id])
+  billId          String?
+  allocation      Allocation?
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([transactionId])
+  @@index([gatewayOrderId])
+  @@map("payments")
+}
+

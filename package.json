@@ -1,0 +1,25 @@
+{
+  "name": "powernetpro-digital-solar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Digital Solar Platform - Reserve solar capacity and reduce electricity bills",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "start": "pnpm --filter web start",
+    "lint": "pnpm -r lint",
+    "type-check": "pnpm -r type-check",
+    "db:generate": "pnpm --filter database generate",
+    "db:migrate": "pnpm --filter database migrate",
+    "db:studio": "pnpm --filter database studio"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
+
